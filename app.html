@@ -1,0 +1,2882 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<title>聊天室</title>
+<script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-firestore.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-storage.js"></script>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+  body {
+    margin: 0;
+    font-family: 'Microsoft JhengHei', sans-serif;
+    height: 100vh;
+    display: flex;
+  }
+  
+  /* 最左側主選單 */
+  #main-sidebar {
+    width: 5%;
+    background: #202225;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 10px 0;
+    gap: 15px;
+  }
+  
+  .main-menu-item {
+    width: 40px;
+    height: 40px;
+    background: #36393f;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    font-size: 18px;
+    color: #dcddde;
+    transition: all 0.3s ease;
+    position: relative;
+  }
+  
+  .main-menu-item:hover, .main-menu-item.active {
+    background: #5865f2;
+    border-radius: 16px;
+    transform: scale(1.1);
+  }
+  
+  .main-menu-item.avatar {
+    background-size: cover;
+    background-position: center;
+    background-image: url('https://i.imgur.com/4Z7hFfK.png');
+    margin-top: auto;
+    margin-bottom: 10px;
+  }
+
+  /* 中間選單欄 */
+  #middle-sidebar {
+    width: 15%;
+    background: #2f3136;
+    color: white;
+    display: flex;
+    flex-direction: column;
+  }
+  
+  .middle-header {
+    padding: 15px;
+    background: #36393f;
+    font-size: 16px;
+    font-weight: bold;
+    text-align: center;
+    position: relative;
+  }
+  
+  .middle-content {
+    flex: 1;
+    overflow-y: auto;
+    padding: 10px 0;
+  }
+  
+  /* 好友列表樣式 */
+  .friends-page .friend {
+    padding: 12px 15px;
+    cursor: pointer;
+    border-bottom: 1px solid #3a3b3f;
+    display: flex;
+    align-items: center;
+  }
+  
+  .friends-page .friend:hover {
+    background: #40444b;
+  }
+  
+  .friends-page .active-friend {
+    background: #5865f2;
+  }
+  
+  /* 群組列表樣式 */
+  .group-item {
+    padding: 12px 15px;
+    cursor: pointer;
+    border-bottom: 1px solid #3a3b3f;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    position: relative;
+  }
+  
+  .group-item:hover {
+    background: #40444b;
+  }
+  
+  .group-item.active {
+    background: #5865f2;
+  }
+  
+  .group-name {
+    flex: 1;
+    font-weight: 500;
+  }
+  
+  .group-info {
+    font-size: 12px;
+    color: #b3b3b3;
+    margin-top: 2px;
+  }
+  
+  .group-options {
+    opacity: 0;
+    transition: opacity 0.2s;
+  }
+  
+  .group-item:hover .group-options {
+    opacity: 1;
+  }
+  
+  .group-options button {
+    background: none;
+    border: none;
+    color: #dcddde;
+    cursor: pointer;
+    font-size: 14px;
+    padding: 4px 6px;
+    border-radius: 3px;
+    margin-left: 4px;
+  }
+  
+  .group-options button:hover {
+    background: #5865f2;
+  }
+  
+  /* 設定頁面樣式 */
+  .settings-item {
+    padding: 12px 15px;
+    cursor: pointer;
+    border-bottom: 1px solid #3a3b3f;
+  }
+  
+  .settings-item:hover {
+    background: #40444b;
+  }
+  
+  /* 頁面隱藏 */
+  .page {
+    display: none;
+  }
+  
+  .page.active {
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* 聊天區 */
+  #chat-container {
+    width: 80%;
+    display: flex;
+    flex-direction: column;
+    background: #f4f4f4;
+  }
+  header {
+    background: #667eea;
+    color: white;
+    padding: 15px;
+    font-size: 18px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  
+  .chat-header-info {
+    display: flex;
+    flex-direction: column;
+  }
+  
+  .chat-header-title {
+    font-size: 18px;
+    font-weight: bold;
+  }
+  
+  .chat-header-subtitle {
+    font-size: 12px;
+    opacity: 0.8;
+    margin-top: 2px;
+  }
+  
+  .chat-header-actions {
+    display: flex;
+    gap: 10px;
+  }
+  
+  .header-btn {
+    background: rgba(255, 255, 255, 0.2);
+    border: none;
+    color: white;
+    padding: 6px 12px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 12px;
+  }
+  
+  .header-btn:hover {
+    background: rgba(255, 255, 255, 0.3);
+  }
+  
+  #messages {
+    flex: 1;
+    padding: 10px;
+    overflow-y: auto;
+  }
+  .message-wrapper {
+    display: flex;
+    align-items: flex-start;
+    margin: 5px 0;
+    position: relative;
+    padding-right: 30px;
+  }
+  .message {
+    padding: 8px 12px;
+    border-radius: 12px;
+    max-width: 70%;
+    word-wrap: break-word;
+    animation: fadeIn 0.3s;
+  }
+  .self {
+    background: #abbaff;
+    color: rgb(0, 0, 0);
+    margin-left: auto;
+  }
+  .other {
+    background: #e8e8e8;
+    color: black;
+    margin-right: auto;
+  }
+  .reply-reference {
+    font-size: 12px;
+    color: #666;
+    background: rgba(255, 255, 255, 0.2);
+    padding: 4px 8px;
+    border-radius: 4px;
+    margin-bottom: 4px;
+    cursor: pointer;
+    border-left: 3px solid #333;
+  }
+  .message.self .reply-reference {
+    background: rgba(255, 255, 255, 0.3);
+    color: #ddd;
+    border-left-color: #ddd;
+  }
+  .reactions {
+    font-size: 12px;
+    margin-top: 4px;
+  }
+  .reaction {
+    display: inline-block;
+    margin-right: 5px;
+    padding: 2px 6px;
+    background: rgba(0, 0, 0, 0.1);
+    border-radius: 10px;
+    cursor: pointer;
+  }
+  #input-area {
+    display: flex;
+    border-top: 1px solid #ccc;
+    padding: 10px;
+    background: white;
+    gap: 5px;
+  }
+  #messageInput {
+    flex: 1;
+    padding: 8px;
+    border: 1px solid #ccc;
+    border-radius: 6px;
+  }
+  #sendBtn, #fileBtn {
+    padding: 8px 16px;
+    background: #48bb78;
+    color: white;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+  }
+  #sendBtn:hover, #fileBtn:hover {
+    background: #38a169;
+  }
+  #fileInput {
+    display: none;
+  }
+  img.chat-image {
+    max-width: 200px;
+    border-radius: 8px;
+  }
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(5px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  
+  /* Modal 樣式 */
+  .modal {
+    position: fixed;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    background: rgba(0,0,0,0.5);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+  }
+  
+  .modal-content {
+    background: white;
+    padding: 20px;
+    border-radius: 8px;
+    width: 400px;
+    max-height: 80vh;
+    overflow-y: auto;
+    text-align: center;
+  }
+  
+  .modal-content h3 {
+    margin-top: 0;
+    color: #333;
+  }
+  
+  .modal-content input {
+    width: 90%;
+    padding: 8px;
+    margin-bottom: 10px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+  }
+  
+  .modal-buttons {
+    display: flex;
+    justify-content: center;
+    gap: 10px;
+    margin-top: 15px;
+  }
+  
+  .modal-buttons button {
+    padding: 8px 16px;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+  }
+  
+  .btn-primary {
+    background: #5865f2;
+    color: white;
+  }
+  
+  .btn-secondary {
+    background: #ccc;
+    color: black;
+  }
+  
+  .btn-danger {
+    background: #e53e3e;
+    color: white;
+  }
+  
+  /* 好友選擇列表 */
+  .friend-select-list {
+    max-height: 300px;
+    overflow-y: auto;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    margin: 10px 0;
+  }
+  
+  .friend-select-item {
+    display: flex;
+    align-items: center;
+    padding: 8px 12px;
+    border-bottom: 1px solid #eee;
+    cursor: pointer;
+  }
+  
+  .friend-select-item:hover {
+    background: #f0f0f0;
+  }
+  
+  .friend-select-item input[type="checkbox"] {
+    margin-right: 10px;
+  }
+  
+  .friend-select-item:last-child {
+    border-bottom: none;
+  }
+  
+  /* 群組成員列表 */
+  .member-list {
+    text-align: left;
+    max-height: 300px;
+    overflow-y: auto;
+  }
+  
+  .member-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 8px 12px;
+    border-bottom: 1px solid #eee;
+  }
+  
+  .member-item:last-child {
+    border-bottom: none;
+  }
+  
+  .member-info {
+    display: flex;
+    align-items: center;
+    flex: 1;
+  }
+  
+  .member-name {
+    font-weight: 500;
+    margin-right: 8px;
+  }
+  
+  .member-role {
+    font-size: 12px;
+    color: #666;
+    background: #f0f0f0;
+    padding: 2px 6px;
+    border-radius: 10px;
+  }
+  
+  .member-actions {
+    display: flex;
+    gap: 5px;
+  }
+  
+  .member-actions button {
+    padding: 4px 8px;
+    border: none;
+    border-radius: 3px;
+    cursor: pointer;
+    font-size: 12px;
+  }
+  
+  .msg-error {
+    color: red;
+    font-size: 14px;
+    margin-top: 10px;
+  }
+  
+  .msg-success {
+    color: green;
+    font-size: 14px;
+    margin-top: 10px;
+  }
+  
+  /* 三點選單 */
+  .more-btn {
+    background: none;
+    border: none;
+    cursor: pointer;
+    font-size: 16px;
+    color: gray;
+    visibility: hidden;
+    position: absolute;
+    right: 5px;
+    top: 5px;
+    width: 20px;
+    height: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  
+  .message-wrapper:hover .more-btn {
+    visibility: visible;
+  }
+
+  .action-menu {
+    position: fixed;
+    background: white;
+    border: 1px solid #ccc;
+    border-radius: 6px;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+    z-index: 100;
+    min-width: 120px;
+  }
+  
+  .action-menu div {
+    padding: 8px 12px;
+    cursor: pointer;
+    border-bottom: 1px solid #eee;
+  }
+  
+  .action-menu div:last-child {
+    border-bottom: none;
+  }
+  
+  .action-menu div:hover {
+    background: #f0f0f0;
+  }
+
+  /* 回覆訊息區塊樣式 */
+  #replyBox {
+    display: none;
+    background: #f0f0f0;
+    padding: 8px 12px;
+    font-size: 13px;
+    border-top: 1px solid #ccc;
+    color: #333;
+    position: relative;
+  }
+  
+  #replyBox .reply-info {
+    font-weight: bold;
+    color: #667eea;
+  }
+  
+  #replyCancel {
+    position: absolute;
+    right: 12px;
+    top: 8px;
+    cursor: pointer;
+    font-weight: normal;
+    color: #666;
+    background: #ddd;
+    border: none;
+    border-radius: 3px;
+    padding: 2px 6px;
+    font-size: 12px;
+  }
+  
+  #replyCancel:hover {
+    background: #ccc;
+  }
+
+  /* 頭像選單彈窗 */
+  #avatar-menu {
+    position: fixed;
+    bottom: 60px;
+    left: 10px;
+    background: white;
+    border: 1px solid #ccc;
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+    z-index: 1000;
+    display: none;
+    min-width: 150px;
+  }
+  
+  .avatar-menu-item {
+    padding: 10px 15px;
+    cursor: pointer;
+    border-bottom: 1px solid #eee;
+  }
+  
+  .avatar-menu-item:last-child {
+    border-bottom: none;
+    color: #e53e3e;
+  }
+  
+  .avatar-menu-item:hover {
+    background: #f0f0f0;
+  }
+  
+  /* 空狀態樣式 */
+  .empty-state {
+    padding: 40px 20px;
+    text-align: center;
+    color: #888;
+  }
+  
+  .empty-state h3 {
+    margin-bottom: 10px;
+    color: #666;
+  }
+  
+  .empty-state p {
+    margin-bottom: 20px;
+    line-height: 1.5;
+  }
+
+  /* 調試信息樣式 */
+  .debug-info {
+    background: #f8f9fa;
+    border: 1px solid #e9ecef;
+    border-radius: 4px;
+    padding: 10px;
+    margin: 10px 0;
+    font-family: monospace;
+    font-size: 12px;
+    color: #495057;
+  }
+
+  .debug-error {
+    background: #f8d7da;
+    border-color: #f5c6cb;
+    color: #721c24;
+  }
+  .debug-info { display: none !important; }
+
+</style>
+<style>
+  /* 手機版優化 */
+@media (max-width: 768px) {
+  body {
+    flex-direction: column !important;
+    height: auto !important;
+  }
+
+  /* 主選單變成底部工具列 */
+  #main-sidebar {
+    flex-direction: row !important;
+    justify-content: space-around;
+    width: 100%;
+    height: 60px;
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    background: #202225;
+    padding: 0;
+    gap: 0;
+    z-index: 100;
+  }
+
+  .main-menu-item {
+    width: 50px;
+    height: 50px;
+    border-radius: 12px;
+    font-size: 20px;
+  }
+
+  /* 隱藏中間欄 */
+  #middle-sidebar {
+    display: none !important;
+  }
+
+  /* 聊天區全寬，並預留底部空間 */
+  #chat-container {
+    width: 100% !important;
+    margin-bottom: 60px;
+  }
+
+  /* 輸入區域適合觸控 */
+  #input-area {
+    padding: 8px;
+    gap: 8px;
+  }
+  #messageInput {
+    font-size: 16px;
+    padding: 10px;
+  }
+  #sendBtn, #fileBtn {
+    padding: 10px 14px;
+    font-size: 16px;
+  }
+
+  /* Modal 全螢幕顯示 */
+  .modal-content {
+    width: 90% !important;
+    max-height: 90vh;
+  }
+}
+@media (max-width: 768px) {
+  /* 主選單變底部工具列 */
+  #main-sidebar {
+    flex-direction: row !important;
+    justify-content: space-around !important;
+    align-items: center !important; /* 垂直置中 */
+    width: 100% !important;
+    height: 60px !important;
+    position: fixed !important;
+    bottom: 0 !important;
+    left: 0 !important;
+    background: #202225 !important; /* 深色背景 */
+    padding: 0 !important;
+    gap: 0 !important;
+    z-index: 1000 !important;
+  }
+
+  /* 按鈕大小與樣式 */
+  .main-menu-item {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    width: 50px !important;
+    height: 50px !important;
+    border-radius: 12px !important;
+    font-size: 20px !important;
+    color: white !important;
+    background: #2f3136 !important;
+  }
+
+  /* 中間欄先隱藏 */
+  #middle-sidebar {
+    display: none !important;
+  }
+
+  /* 聊天區全寬 */
+  #chat-container {
+    width: 100% !important;
+    margin-bottom: 60px !important; /* 預留底部空間 */
+  }
+}
+.message .meta-info {
+  font-size: 10px;
+  color: #888;
+  margin-top: 2px;
+  white-space: pre-line;
+}
+
+.message.self .meta-info {
+  color: #ddd;
+}
+@media (max-width: 768px) {
+  /* 中间栏默认隐藏，但在某些页面需要显示 */
+  #middle-sidebar {
+    display: none !important;
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
+    width: 100% !important;
+    height: 100vh !important;
+    z-index: 999 !important;
+    background: #2f3136 !important;
+  }
+  
+  /* 当显示中间栏时 */
+  #middle-sidebar.mobile-show {
+    display: flex !important;
+  }
+  
+  /* 聊天区在显示中间栏时隐藏 */
+  #chat-container.mobile-hide {
+    display: none !important;
+  }
+}
+</style>
+</head>
+<body>
+
+<!-- 最左側主選單 -->
+<div id="main-sidebar">
+  <div class="main-menu-item" data-page="messages" title="訊息">💬</div>
+  <div class="main-menu-item" data-page="home" title="主頁">🏠</div>
+  <div class="main-menu-item" data-page="friends" title="好友">👥</div>
+  <div class="main-menu-item" data-page="groups" title="群組">👪</div>
+  <div class="main-menu-item" data-page="communities" title="社群">🌐</div>
+  <div class="main-menu-item" data-page="settings" title="設定">⚙️</div>
+  <div class="main-menu-item avatar" id="avatar-btn" title="個人資料"></div>
+</div>
+
+<!-- 中間選單欄 -->
+<div id="middle-sidebar">
+  <!-- 訊息頁面 -->
+  <div class="page" id="messages-page">
+    <div class="middle-header">訊息</div>
+    <div class="middle-content">
+      <div id="messagesFriendsList"></div>
+      <div style="padding: 15px; text-align: center;">
+        <button id="addFriendBtnMessages" class="btn-primary" style="border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer;">加好友</button>
+      </div>
+    </div>
+  </div>
+  
+  <!-- 主頁 -->
+  <div class="page" id="home-page">
+    <div class="middle-header">主頁</div>
+    <div class="middle-content">
+      <div style="padding: 15px;">
+        <h3>歡迎來到 FayCRChat!</h3>
+        <p>開始和朋友聊天吧！</p>
+      </div>
+    </div>
+  </div>
+  
+  <!-- 好友頁面 -->
+  <div class="page friends-page" id="friends-page">
+    <div class="middle-header">好友列表</div>
+    <div class="middle-content">
+      <div id="friendsList"></div>
+      <div style="padding: 15px; text-align: center;">
+        <button id="addFriendBtn" class="btn-primary" style="border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer;">加好友</button>
+      </div>
+    </div>
+  </div>
+  
+  <!-- 群組頁面 -->
+  <div class="page" id="groups-page">
+    <div class="middle-header">
+      群組
+      <button id="createGroupBtn" style="float:right; background: #5865f2; color: white; border: none; padding: 6px 10px; border-radius: 6px; cursor: pointer;">
+        ➕ 建立
+      </button>
+    </div>
+    <div class="middle-content">
+      <div class="debug-info" id="debugInfo">
+        <div>用戶 UID: <span id="debugUid">載入中...</span></div>
+        <div>Firebase 狀態: <span id="debugFirebase">初始化中...</span></div>
+        <div>群組監聽狀態: <span id="debugGroups">未開始...</span></div>
+      </div>
+      <div id="groupsList">
+        <div class="empty-state">
+          <h3>🏠 載入群組中...</h3>
+          <p>正在載入您的群組列表，請稍候...</p>
+        </div>
+      </div>
+    </div>
+  </div>
+  
+  <!-- 社群頁面 -->
+  <div class="page" id="communities-page">
+    <div class="middle-header">社群</div>
+    <div class="middle-content">
+      <div class="empty-state">
+        <h3>🌐 社群功能</h3>
+        <p>敬請期待...</p>
+      </div>
+    </div>
+  </div>
+  
+  <!-- 設定頁面 -->
+  <div class="page" id="settings-page">
+    <div class="middle-header">設定</div>
+    <div class="middle-content">
+      <div class="settings-item">個人資料</div>
+      <div class="settings-item">隱私設定</div>
+      <div class="settings-item">通知設定</div>
+      <div class="settings-item">主題設定</div>
+      <div class="settings-item">語言設定</div>
+      <div class="settings-item">關於</div>
+    </div>
+  </div>
+</div>
+
+<!-- 聊天區 -->
+<div id="chat-container">
+  <header id="chatHeader">
+    <div class="chat-header-info">
+      <div class="chat-header-title">請選擇群組</div>
+      <div class="chat-header-subtitle" id="chatHeaderSubtitle"></div>
+    </div>
+    <div class="chat-header-actions" id="chatHeaderActions" style="display: none;">
+      <button class="header-btn" id="inviteMembersBtn">邀請成員</button>
+      <button class="header-btn" id="groupSettingsBtn">群組設定</button>
+    </div>
+  </header>
+  
+  <div id="messages">
+    <div class="empty-state">
+      <h3>💬 開始群組聊天</h3>
+      <p>選擇一個群組開始聊天，或建立新群組邀請朋友加入！</p>
+    </div>
+  </div>
+  
+  <!-- 回覆訊息區塊 -->
+  <div id="replyBox">
+    <div class="reply-info">回覆 <span id="replyUser"></span>:</div>
+    <div id="replyText"></div>
+    <button id="replyCancel">✖</button>
+  </div>
+
+  <div id="input-area">
+    <input type="text" id="messageInput" placeholder="輸入訊息..." disabled />
+    <button id="fileBtn" disabled>📎</button>
+    <input type="file" id="fileInput" />
+    <button id="sendBtn" disabled>送出</button>
+  </div>
+</div>
+
+<!-- 建立群組彈窗 -->
+<div id="createGroupModal" class="modal">
+  <div class="modal-content">
+    <h3>建立新群組</h3>
+    <input type="text" id="groupNameInput" placeholder="群組名稱" />
+    <input type="text" id="groupDescInput" placeholder="群組描述 (選填)" />
+    <div class="modal-buttons">
+      <button id="confirmCreateGroup" class="btn-primary">建立</button>
+      <button id="cancelCreateGroup" class="btn-secondary">取消</button>
+    </div>
+    <p id="createGroupMsg" class="msg-error"></p>
+  </div>
+</div>
+
+<!-- 邀請成員彈窗 -->
+<div id="inviteMembersModal" class="modal">
+  <div class="modal-content">
+    <h3>邀請好友加入群組</h3>
+    <div class="friend-select-list" id="friendSelectList">
+      <div style="text-align: center; color: #888; padding: 20px;">載入中...</div>
+    </div>
+    <div class="modal-buttons">
+      <button id="confirmInviteMembers" class="btn-primary">發送邀請</button>
+      <button id="cancelInviteMembers" class="btn-secondary">取消</button>
+    </div>
+    <p id="inviteMembersMsg" class="msg-error"></p>
+  </div>
+</div>
+
+<!-- 群組設定彈窗 -->
+<div id="groupSettingsModal" class="modal">
+  <div class="modal-content">
+    <h3>群組設定</h3>
+    <div style="text-align: left;">
+      <h4>群組資訊</h4>
+      <input type="text" id="editGroupName" placeholder="群組名稱" />
+      <input type="text" id="editGroupDesc" placeholder="群組描述" />
+      
+      <h4>群組成員 (<span id="memberCount">0</span>)</h4>
+      <div class="member-list" id="memberList">
+        <div style="text-align: center; color: #888; padding: 20px;">載入中...</div>
+      </div>
+    </div>
+    <div class="modal-buttons">
+      <button id="saveGroupSettings" class="btn-primary">儲存設定</button>
+      <button id="cancelGroupSettings" class="btn-secondary">取消</button>
+      <button id="leaveGroup" class="btn-danger">離開群組</button>
+    </div>
+    <p id="groupSettingsMsg" class="msg-error"></p>
+  </div>
+</div>
+
+<!-- 加好友彈窗 -->
+<div id="addFriendModal" class="modal">
+  <div class="modal-content">
+    <h3>輸入好友 ID</h3>
+    <input type="text" id="friendIdInput" placeholder="好友ID" />
+    <div class="modal-buttons">
+      <button id="confirmAddFriend" class="btn-primary">確認</button>
+      <button id="cancelAddFriend" class="btn-secondary">取消</button>
+    </div>
+    <p id="addFriendMsg" class="msg-error"></p>
+  </div>
+</div>
+
+<!-- 確認對話框 -->
+<div id="confirmModal" class="modal">
+  <div class="modal-content">
+    <h3 id="confirmTitle">確認操作</h3>
+    <p id="confirmMessage">確定要執行此操作嗎？</p>
+    <div class="modal-buttons">
+      <button id="confirmYes" class="btn-danger">確認</button>
+      <button id="confirmNo" class="btn-secondary">取消</button>
+    </div>
+  </div>
+</div>
+
+<!-- 頭像選單 -->
+<div id="avatar-menu">
+  <div class="avatar-menu-item">個人資料</div>
+  <div class="avatar-menu-item">狀態設定</div>
+  <div class="avatar-menu-item" id="logout-btn">登出</div>
+</div>
+<script>
+  if (!localStorage.getItem("uid") || !localStorage.getItem("userEmail")) {
+    window.location.href = "index.html";
+  }
+</script>
+
+<script>
+
+    switchPage('home');
+
+  // Firebase 初始化
+  const firebaseConfig = {
+    apiKey: "AIzaSyBdrLtJihqOdIhvODvtLaUXZozOlXmxPAI",
+    authDomain: "faycrchat.firebaseapp.com",
+    projectId: "faycrchat",
+    storageBucket: "faycrchat.appspot.com",
+    messagingSenderId: "569359638648",
+    appId: "1:569359638648:web:73a05e760fd2af90608d8d",
+    measurementId: "G-LTBL20K38K"
+  };
+  
+  console.log("初始化 Firebase...");
+  firebase.initializeApp(firebaseConfig);
+  const db = firebase.firestore();
+  const storage = firebase.storage();
+
+  // 調試用函數
+  function updateDebugInfo(key, value, isError = false) {
+    const element = document.getElementById(`debug${key}`);
+    if (element) {
+      element.textContent = value;
+      if (isError) {
+        element.parentElement.classList.add('debug-error');
+      } else {
+        element.parentElement.classList.remove('debug-error');
+      }
+    }
+  }
+
+  // 用戶資料
+  const userEmail = localStorage.getItem("userEmail") || "test@example.com";
+  const displayName = userEmail.split("@")[0];
+  const uid = localStorage.getItem("uid") || userEmail.replace(/[^a-zA-Z0-9]/g, "_");
+
+  console.log("用戶資料:", { userEmail, displayName, uid });
+  updateDebugInfo("Uid", uid);
+
+  // 全局變數
+  let currentFriendUid = null;
+  let currentGroupId = null;
+  let currentGroupData = null;
+  let unsubscribeMessages = null;
+  let unsubscribeGroups = null;
+  let replyToMessageId = null;
+  let actionMenuEl = null;
+  let messageToDelete = null;
+  let userFriends = [];
+
+  // 左側選單切換功能
+  function switchPage(pageName) {
+  // 桌面版逻辑
+  document.querySelectorAll('.page').forEach(page => {
+    page.classList.remove('active');
+  });
+  
+  document.querySelectorAll('.main-menu-item').forEach(item => {
+    item.classList.remove('active');
+  });
+  
+  const targetPage = document.getElementById(pageName + '-page');
+  if (targetPage) {
+    targetPage.classList.add('active');
+  }
+  
+  const activeMenuItem = document.querySelector(`[data-page="${pageName}"]`);
+  if (activeMenuItem) {
+    activeMenuItem.classList.add('active');
+  }
+  
+  // 手机版特殊处理
+  if (window.innerWidth <= 768) {
+    const middleSidebar = document.getElementById('middle-sidebar');
+    const chatContainer = document.getElementById('chat-container');
+    
+    if (pageName === 'messages' && currentGroupId) {
+      // 如果在messages页面且已选择群组，显示聊天界面
+      middleSidebar.classList.remove('mobile-show');
+      chatContainer.classList.remove('mobile-hide');
+    } else if (pageName === 'home') {
+      // 主页直接显示聊天区
+      middleSidebar.classList.remove('mobile-show');
+      chatContainer.classList.remove('mobile-hide');
+    } else {
+      // 其他页面显示中间栏
+      middleSidebar.classList.add('mobile-show');
+      chatContainer.classList.add('mobile-hide');
+    }
+  }
+}
+
+  // 為左側選單項添加點擊事件
+  document.querySelectorAll('.main-menu-item[data-page]').forEach(item => {
+    item.addEventListener('click', () => {
+      const pageName = item.getAttribute('data-page');
+      switchPage(pageName);
+    });
+  });
+
+  // 確保用戶有 friendId
+  async function ensureFriendId() {
+    console.log("確保用戶有 friendId...");
+    try {
+      const userRef = db.collection("users").doc(uid);
+      const userDoc = await userRef.get();
+      let friendId;
+      
+      if (userDoc.exists && userDoc.data().friendId) {
+        console.log("用戶已有 friendId:", userDoc.data().friendId);
+        return userDoc.data().friendId;
+      }
+
+      friendId = displayName;
+      if (!/^[a-zA-Z0-9]+$/.test(friendId)) {
+        friendId = "user" + Math.random().toString(36).substring(2, 8);
+      }
+      
+      let exists = true;
+      while (exists) {
+        const snap = await db.collection("users").where("friendId", "==", friendId).get();
+        if (!snap.empty) {
+          friendId = "user" + Math.random().toString(36).substring(2, 8);
+        } else {
+          exists = false;
+        }
+      }
+      
+      await userRef.set({
+        email: userEmail,
+        displayName: displayName,
+        avatar: "https://i.imgur.com/4Z7hFfK.png",
+        friends: [],
+        friendId: friendId
+      }, { merge: true });
+      
+      console.log("建立新用戶資料，friendId:", friendId);
+      return friendId;
+    } catch (error) {
+      console.error("確保用戶 friendId 失敗:", error);
+      updateDebugInfo("Firebase", "用戶資料初始化失敗", true);
+      throw error;
+    }
+  }
+
+  // 監聽用戶好友列表
+  function listenFriendList() {
+    console.log("開始監聽好友列表...");
+    db.collection("users").doc(uid).onSnapshot(doc => {
+      if (doc.exists) {
+        userFriends = doc.data().friends || [];
+        console.log("好友列表更新:", userFriends);
+        renderFriendList(userFriends, "friendsList");
+        renderFriendList(userFriends, "messagesFriendsList");
+      } else {
+        console.log("用戶文檔不存在，顯示測試好友");
+        renderTestFriends("friendsList");
+        renderTestFriends("messagesFriendsList");
+      }
+    }, (error) => {
+      console.error("監聽好友列表失敗:", error);
+      renderTestFriends("friendsList");
+      renderTestFriends("messagesFriendsList");
+    });
+  }
+
+  // 群組列表監聽
+function listenGroupList() {
+  const groupsList = document.getElementById("groupsList");
+  groupsList.innerHTML = `<div class="loading">載入中...</div>`;
+
+  if (unsubscribeGroups) unsubscribeGroups();
+
+  unsubscribeGroups = db.collection("groups")
+    .where("members", "array-contains", uid)
+    .orderBy("updatedAt", "desc")
+    .onSnapshot(snapshot => {
+      groupsList.innerHTML = "";
+      if (snapshot.empty) {
+        groupsList.innerHTML = `
+          <div class="empty-state">
+            <h3>📭 沒有群組</h3>
+            <p>快建立一個群組開始聊天吧！</p>
+          </div>`;
+        return;
+      }
+      snapshot.forEach(doc => {
+        const data = doc.data();
+        const groupItem = document.createElement("div");
+        groupItem.classList.add("group-item");
+        groupItem.setAttribute("data-group-id", doc.id);
+        groupItem.innerHTML = `
+          <div style="flex: 1;">
+            <div class="group-name">${data.name}</div>
+            <div class="group-info">${data.lastMessage ? `${data.lastMessage.sender}: ${data.lastMessage.text}` : "尚無訊息"}</div>
+          </div>
+        `;
+        groupItem.onclick = () => openGroupChat(doc.id, data);
+        groupsList.appendChild(groupItem);
+      });
+    }, (error) => {
+      console.error("載入群組列表錯誤:", error);
+      let errorHTML = `
+        <div class="empty-state">
+          <h3>❌ 載入失敗</h3>
+          <p>${error.message}</p>
+      `;
+      // 偵測索引錯誤
+      if (error.code === "failed-precondition" && error.message.includes("index")) {
+        // 嘗試提取 URL
+        const urlMatch = error.message.match(/https:\/\/[^\s]+/);
+        if (urlMatch) {
+          errorHTML += `<p><a href="${urlMatch[0]}" target="_blank" style="color: #4cafef;">📌 點此建立索引</a></p>`;
+        }
+      }
+      errorHTML += `<button onclick="listenGroupList()">重試</button></div>`;
+      groupsList.innerHTML = errorHTML;
+    });
+}
+
+  // 重試載入群組
+  function retryLoadGroups() {
+    console.log("重試載入群組...");
+    document.getElementById("groupsList").innerHTML = `
+      <div class="empty-state">
+        <h3>🔄 重新載入中...</h3>
+        <p>正在重新載入群組列表...</p>
+      </div>
+    `;
+    listenGroupList();
+  }
+
+  // 建立測試群組
+  async function createTestGroup() {
+    console.log("建立測試群組...");
+    try {
+      const groupData = {
+        name: "測試群組",
+        description: "這是一個測試群組",
+        owner: uid,
+        admins: [uid],
+        members: [uid],
+        createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+        updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+      };
+      
+      const docRef = await db.collection("groups").add(groupData);
+      console.log("測試群組建立成功:", docRef.id);
+      
+      // 發送歡迎訊息
+      await db.collection("groupChats").doc(docRef.id).collection("messages").add({
+        sender: "系統",
+        senderUid: "system",
+        type: "system",
+        text: "歡迎來到測試群組！",
+        timestamp: firebase.firestore.FieldValue.serverTimestamp(),
+      readBy: [uid] // 自己先已讀
+      });
+      
+    } catch (error) {
+      console.error("建立測試群組失敗:", error);
+      alert("建立測試群組失敗: " + error.message);
+    }
+  }
+
+  // 開啟群組聊天
+  function openGroupChat(groupId, groupData) {
+    console.log("開啟群組聊天:", groupId, groupData.name);
+    
+    currentGroupId = groupId;
+    currentGroupData = groupData;
+    currentFriendUid = null;
+    
+    // 更新UI狀態
+    document.querySelectorAll('.group-item').forEach(item => {
+      item.classList.remove('active');
+    });
+    document.querySelector(`[data-group-id="${groupId}"]`)?.classList.add('active');
+    
+    // 更新聊天頭部
+    document.querySelector('.chat-header-title').textContent = groupData.name;
+    document.getElementById('chatHeaderSubtitle').textContent = `${groupData.members ? groupData.members.length : 0} 位成員`;
+    document.getElementById('chatHeaderActions').style.display = 'flex';
+    
+    // 啟用輸入區域
+    document.getElementById("messageInput").disabled = false;
+    document.getElementById("sendBtn").disabled = false;
+    document.getElementById("fileBtn").disabled = false;
+    
+    // 監聽群組訊息
+    if (unsubscribeMessages) unsubscribeMessages();
+    unsubscribeMessages = db.collection("groupChats").doc(groupId)
+      .collection("messages")
+      .orderBy("timestamp")
+      .onSnapshot(snapshot => {
+        renderMessages(snapshot);
+      }, (error) => {
+        console.error("監聽訊息失敗:", error);
+        document.getElementById("messages").innerHTML = `
+          <div class="empty-state">
+            <h3>❌ 載入訊息失敗</h3>
+            <p>無法載入聊天訊息: ${error.message}</p>
+          </div>
+        `;
+      });
+      // 監聽群組資料變化（例如成員數）
+if (window.unsubscribeGroupData) unsubscribeGroupData();
+unsubscribeGroupData = db.collection("groups").doc(groupId).onSnapshot(doc => {
+  if (doc.exists) {
+    currentGroupData = doc.data();
+    document.getElementById('chatHeaderSubtitle').textContent =
+      `${currentGroupData.members ? currentGroupData.members.length : 0} 位成員`;
+      // 在 openGroupChat 函数的最后添加
+if (window.innerWidth <= 768) {
+  // 手机版：选择群组后自动切换到聊天界面
+  document.getElementById('middle-sidebar').classList.remove('mobile-show');
+  document.getElementById('chat-container').classList.remove('mobile-hide');
+}
+  }
+});
+
+  }
+
+  // 渲染訊息
+  function renderMessages(snapshot) {
+    const messagesDiv = document.getElementById("messages");
+    messagesDiv.innerHTML = "";
+    
+    if (snapshot.empty) {
+      messagesDiv.innerHTML = `
+        <div class="empty-state">
+          <h3>👋 開始聊天吧！</h3>
+          <p>這個群組還沒有訊息，成為第一個發言的人吧！</p>
+        </div>
+      `;
+      return;
+    }
+    
+    snapshot.forEach(doc => {
+      const data = doc.data();
+      const wrapper = document.createElement("div");
+      wrapper.classList.add("message-wrapper");
+      wrapper.id = `msg-${doc.id}`;
+      
+      const msgEl = document.createElement("div");
+      msgEl.classList.add("message", data.sender === displayName ? "self" : "other");
+
+      // 回覆引用
+      if (data.replyTo) {
+        const replyRef = document.createElement("div");
+        replyRef.classList.add("reply-reference");
+        replyRef.textContent = "回覆內容：載入中...";
+        replyRef.onclick = () => scrollToMessage(data.replyTo);
+        
+        // 載入被回覆的訊息
+        db.collection("groupChats").doc(currentGroupId).collection("messages").doc(data.replyTo)
+          .get().then(rDoc => {
+            if (rDoc.exists) {
+              const replyData = rDoc.data();
+              const previewText = getMessagePreview(replyData);
+              replyRef.textContent = `回覆 ${replyData.sender}: ${previewText}`;
+            }
+          });
+        msgEl.appendChild(replyRef);
+      }
+
+      // 訊息內容
+      const contentDiv = document.createElement("div");
+      if (data.type === "image") {
+        const img = document.createElement("img");
+        img.src = data.url;
+        img.classList.add("chat-image");
+        img.onerror = () => {
+          img.style.display = 'none';
+          contentDiv.innerHTML = `<div style="color: #999;">[圖片載入失敗]</div>`;
+        };
+        contentDiv.appendChild(img);
+      } else if (data.type === "file") {
+        const fileDiv = document.createElement("div");
+        fileDiv.innerHTML = `📎 `;
+        const a = document.createElement("a");
+        a.href = data.url;
+        a.textContent = data.fileName || "下載檔案";
+        a.target = "_blank";
+        a.style.color = "blue";
+        a.style.textDecoration = "underline";
+        fileDiv.appendChild(a);
+        contentDiv.appendChild(fileDiv);
+      } else {
+        const linkRegex = /(https:\/\/[^\s]+)/g;
+        const safeText = (data.text || '').replace(linkRegex, url => {
+          return `<a href="${url}" target="_blank" style="color:blue;text-decoration:underline;">${url}</a>`;
+        });
+        contentDiv.innerHTML = `<strong>${data.sender}:</strong> ${safeText}`;
+      }
+      msgEl.appendChild(contentDiv);
+
+// 自動標記已讀
+if (!data.readBy?.includes(uid) && data.senderUid !== uid) {
+  // 延遲標記已讀，避免立即標記
+  setTimeout(() => {
+    try {
+      if (currentGroupId) {
+        db.collection("groupChats").doc(currentGroupId)
+          .collection("messages").doc(doc.id)
+          .update({
+            readBy: firebase.firestore.FieldValue.arrayUnion(uid)
+          });
+      } else if (currentFriendUid) {
+        const chatId = getChatId(uid, currentFriendUid);
+        db.collection("chats").doc(chatId)
+          .collection("messages").doc(doc.id)
+          .update({
+            readBy: firebase.firestore.FieldValue.arrayUnion(uid)
+          });
+      }
+    } catch (error) {
+      console.log("標記已讀失敗:", error);
+    }
+  }, 800);
+}
+
+
+// 顯示發送時間與已讀人數（兩行格式）
+const metaDiv = document.createElement("div");
+metaDiv.style.fontSize = "10px";
+metaDiv.style.color = "#888";
+metaDiv.style.marginTop = "2px";
+metaDiv.style.whiteSpace = "pre-line"; // 支援換行
+metaDiv.classList.add('meta-info');
+
+// 發送時間格式化
+let timeStr = "傳送中...";
+if (data.timestamp?.toDate) {
+  const dateObj = data.timestamp.toDate();
+  const now = new Date();
+  const isToday = dateObj.toDateString() === now.toDateString();
+  
+  let hours = dateObj.getHours();
+  const minutes = String(dateObj.getMinutes()).padStart(2, "0");
+  const period = hours >= 12 ? "下午" : "上午";
+  if (hours > 12) hours -= 12;
+  if (hours === 0) hours = 12;
+  
+  if (isToday) {
+    timeStr = `${period}${hours}:${minutes}`;
+  } else {
+    const month = String(dateObj.getMonth() + 1).padStart(2, "0");
+    const day = String(dateObj.getDate()).padStart(2, "0");
+    timeStr = `${month}/${day} ${period}${hours}:${minutes}`;
+  }
+}
+
+// 已讀人數
+const readCount = (data.readBy?.length || 0);
+metaDiv.textContent = `${timeStr}\n已讀 ${readCount}`;
+
+msgEl.appendChild(metaDiv);
+
+
+      // Emoji 反應
+      if (data.reactions) {
+        const reactionsDiv = document.createElement("div");
+        reactionsDiv.classList.add("reactions");
+        Object.entries(data.reactions).forEach(([emoji, users]) => {
+          if (users && users.length > 0) {
+            const reactionSpan = document.createElement("span");
+            reactionSpan.classList.add("reaction");
+            reactionSpan.textContent = `${emoji} ${users.length}`;
+            reactionSpan.onclick = () => toggleReaction(doc.id, emoji);
+            reactionsDiv.appendChild(reactionSpan);
+          }
+        });
+        if (reactionsDiv.children.length > 0) {
+          msgEl.appendChild(reactionsDiv);
+        }
+      }
+
+      // 三點選單按鈕
+      const moreBtn = document.createElement("button");
+      moreBtn.textContent = "⋯";
+      moreBtn.classList.add("more-btn");
+      moreBtn.onclick = (e) => showActionMenu(e, doc.id, data);
+      
+      wrapper.appendChild(msgEl);
+      wrapper.appendChild(moreBtn);
+      messagesDiv.appendChild(wrapper);
+    });
+    
+    messagesDiv.scrollTop = messagesDiv.scrollHeight;
+  }
+
+  // 獲取訊息預覽文字
+  function getMessagePreview(messageData) {
+    if (messageData.text) {
+      return messageData.text.length > 50 ? messageData.text.slice(0, 50) + '...' : messageData.text;
+    }
+    switch (messageData.type) {
+      case 'image': return '[圖片]';
+      case 'file': return '[檔案]';
+      default: return '[訊息]';
+    }
+  }
+
+  // 滾動到指定訊息
+  function scrollToMessage(messageId) {
+    const targetEl = document.getElementById(`msg-${messageId}`);
+    if (targetEl) {
+      targetEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      targetEl.style.backgroundColor = '#fffbcc';
+      setTimeout(() => targetEl.style.backgroundColor = '', 2000);
+    }
+  }
+
+  // 發送訊息
+  function sendMessage() {
+    const messageInput = document.getElementById("messageInput");
+    const text = messageInput.value.trim();
+    if (!text || !currentGroupId) return;
+
+    console.log("發送訊息:", text);
+
+    const msgData = {
+      sender: displayName,
+      senderUid: uid,
+      type: "text",
+      text: text,
+      timestamp: firebase.firestore.FieldValue.serverTimestamp(),
+      readBy: [uid] // 自己先已讀
+    };
+
+    // 如果有回覆，加入回覆資訊
+    if (replyToMessageId) {
+      msgData.replyTo = replyToMessageId;
+    }
+
+    // 發送到群組聊天
+    db.collection("groupChats").doc(currentGroupId).collection("messages").add(msgData)
+      .then(() => {
+        // 更新群組的最後活動時間
+        return db.collection("groups").doc(currentGroupId).update({
+          updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
+          lastMessage: {
+            sender: displayName,
+            text: text,
+            timestamp: firebase.firestore.FieldValue.serverTimestamp(),
+      readBy: [uid] // 自己先已讀
+          }
+        });
+      })
+      .then(() => {
+        console.log("訊息發送成功");
+      })
+      .catch(error => {
+        console.error("發送訊息失敗:", error);
+        alert("發送訊息失敗，請稍後再試: " + error.message);
+      });
+
+    // 清除回覆狀態和輸入框
+    replyToMessageId = null;
+    document.getElementById("replyBox").style.display = "none";
+    messageInput.value = "";
+  }
+
+  // 上傳檔案
+  function uploadFile(file, type) {
+    if (!currentGroupId) return;
+    
+    const storageRef = storage.ref(`groupFiles/${currentGroupId}/${Date.now()}_${file.name}`);
+    
+    storageRef.put(file).then(snapshot => {
+      return snapshot.ref.getDownloadURL();
+    }).then(url => {
+      const msgData = {
+        sender: displayName,
+        senderUid: uid,
+        type: type,
+        url: url,
+        fileName: file.name,
+        timestamp: firebase.firestore.FieldValue.serverTimestamp(),
+      readBy: [uid] // 自己先已讀
+      };
+
+      // 如果有回覆，加入回覆資訊
+      if (replyToMessageId) {
+        msgData.replyTo = replyToMessageId;
+      }
+
+      return db.collection("groupChats").doc(currentGroupId).collection("messages").add(msgData);
+    }).then(() => {
+      // 更新群組最後活動時間
+      return db.collection("groups").doc(currentGroupId).update({
+        updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
+        lastMessage: {
+          sender: displayName,
+          text: type === 'image' ? '[圖片]' : '[檔案]',
+          timestamp: firebase.firestore.FieldValue.serverTimestamp(),
+      readBy: [uid] // 自己先已讀
+        }
+      });
+    }).then(() => {
+      // 清除回覆狀態
+      replyToMessageId = null;
+      document.getElementById("replyBox").style.display = "none";
+    }).catch(error => {
+      console.error("上傳檔案失敗:", error);
+      alert("上傳檔案失敗，請稍後再試");
+    });
+  }
+
+  // 顯示訊息操作選單
+  function showActionMenu(e, messageId, messageData) {
+    e.stopPropagation();
+    if (actionMenuEl) actionMenuEl.remove();
+
+    actionMenuEl = document.createElement("div");
+    actionMenuEl.classList.add("action-menu");
+    actionMenuEl.style.top = Math.min(e.clientY, window.innerHeight - 200) + "px";
+    actionMenuEl.style.left = Math.min(e.clientX, window.innerWidth - 150) + "px";
+
+    // 回覆功能
+    const reply = document.createElement("div");
+    reply.textContent = "回覆訊息";
+    reply.onclick = () => {
+      replyToMessageId = messageId;
+      document.getElementById("replyUser").textContent = messageData.sender;
+      document.getElementById("replyText").textContent = getMessagePreview(messageData);
+      document.getElementById("replyBox").style.display = "block";
+      actionMenuEl.remove();
+    };
+    actionMenuEl.appendChild(reply);
+
+    // 如果是自己的訊息，顯示收回選項
+    if (messageData.senderUid === uid) {
+      const recall = document.createElement("div");
+      recall.textContent = "收回訊息";
+      recall.style.color = "#e53e3e";
+      recall.onclick = () => {
+        messageToDelete = messageId;
+        document.getElementById("confirmTitle").textContent = "確認收回訊息";
+        document.getElementById("confirmMessage").textContent = "確定要收回這則訊息嗎？此操作無法復原。";
+        document.getElementById("confirmModal").style.display = "flex";
+        actionMenuEl.remove();
+      };
+      actionMenuEl.appendChild(recall);
+    }
+if (data.senderUid === uid) {
+  if (readCount <= 1) {
+    readText = "✓"; // 已發送
+  } else {
+    readText = `✓✓ ${readCount}`; // 已讀人數
+  }
+}
+    // Emoji 反應
+    const emojiRow = document.createElement("div");
+    emojiRow.style.padding = "8px 12px";
+    emojiRow.style.display = "flex";
+    emojiRow.style.gap = "5px";
+    ['👍', '❤️', '😂', '😮', '😢', '😡'].forEach(emoji => {
+      const btn = document.createElement("span");
+      btn.textContent = emoji;
+      btn.style.cursor = "pointer";
+      btn.style.padding = "4px";
+      btn.style.borderRadius = "4px";
+      btn.onclick = () => {
+        toggleReaction(messageId, emoji);
+        actionMenuEl.remove();
+      };
+      btn.onmouseenter = () => btn.style.backgroundColor = "#f0f0f0";
+      btn.onmouseleave = () => btn.style.backgroundColor = "";
+      emojiRow.appendChild(btn);
+    });
+    actionMenuEl.appendChild(emojiRow);
+
+    document.body.appendChild(actionMenuEl);
+  }
+
+  // 切換 Emoji 反應
+  function toggleReaction(messageId, emoji) {
+    if (!currentGroupId) return;
+    
+    const messageRef = db.collection("groupChats").doc(currentGroupId).collection("messages").doc(messageId);
+    
+    db.runTransaction(transaction => {
+      return transaction.get(messageRef).then(doc => {
+        if (!doc.exists) throw new Error("訊息不存在");
+        
+        const data = doc.data();
+        const reactions = data.reactions || {};
+        const users = reactions[emoji] || [];
+        
+        if (users.includes(uid)) {
+          // 移除反應
+          reactions[emoji] = users.filter(u => u !== uid);
+          if (reactions[emoji].length === 0) {
+            delete reactions[emoji];
+          }
+        } else {
+          // 添加反應
+          reactions[emoji] = [...users, uid];
+        }
+        
+        transaction.update(messageRef, { reactions });
+      });
+    }).catch(error => {
+      console.error("更新反應失敗:", error);
+    });
+  }
+
+  // 建立群組
+  async function createGroup() {
+    const name = document.getElementById("groupNameInput").value.trim();
+    const description = document.getElementById("groupDescInput").value.trim();
+    const msgEl = document.getElementById("createGroupMsg");
+    
+    if (!name) {
+      msgEl.textContent = "請輸入群組名稱";
+      return;
+    }
+    
+    msgEl.textContent = "";
+
+    try {
+      const groupData = {
+        name: name,
+        description: description || "",
+        owner: uid,
+        admins: [uid],
+        members: [uid],
+        createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+        updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+      };
+      
+      const docRef = await db.collection("groups").add(groupData);
+      
+      // 關閉 modal 並清空欄位
+      closeModal("createGroupModal");
+      document.getElementById("groupNameInput").value = "";
+      document.getElementById("groupDescInput").value = "";
+      
+      // 自動開啟剛建立的群組
+      openGroupChat(docRef.id, {...groupData, id: docRef.id});
+
+      if (!groupDoc.exists || !groupDoc.data().members.includes(uid)) {
+  alert("群組不存在或您已不在群組內");
+  return;
+}
+
+      
+    } catch (error) {
+      console.error("建立群組失敗:", error);
+      msgEl.textContent = "建立失敗，請稍後再試";
+    }
+  }
+
+  // 載入好友選擇列表
+  async function loadFriendSelectList() {
+    const container = document.getElementById("friendSelectList");
+    container.innerHTML = '<div style="text-align: center; color: #888; padding: 20px;">載入中...</div>';
+    
+    try {
+      if (!userFriends.length) {
+        container.innerHTML = '<div style="text-align: center; color: #888; padding: 20px;">還沒有好友可以邀請</div>';
+        return;
+      }
+      
+      container.innerHTML = '';
+      
+      // 獲取群組現有成員（避免重複邀請）
+      const groupDoc = await db.collection("groups").doc(currentGroupId).get();
+      const existingMembers = groupDoc.exists ? groupDoc.data().members : [];
+      
+      for (const friendUid of userFriends) {
+        if (existingMembers.includes(friendUid)) continue; // 跳過已是成員的好友
+        
+        try {
+          const friendDoc = await db.collection("users").doc(friendUid).get();
+          if (friendDoc.exists) {
+            const friendData = friendDoc.data();
+            const item = document.createElement("div");
+            item.classList.add("friend-select-item");
+            item.innerHTML = `
+              <input type="checkbox" value="${friendUid}" id="friend-${friendUid}">
+              <label for="friend-${friendUid}">${friendData.displayName}</label>
+            `;
+            container.appendChild(item);
+          }
+        } catch (error) {
+          console.error("載入好友資料失敗:", friendUid, error);
+        }
+      }
+      
+      if (container.children.length === 0) {
+        container.innerHTML = '<div style="text-align: center; color: #888; padding: 20px;">所有好友都已在群組中</div>';
+      }
+      
+    } catch (error) {
+      console.error("載入好友列表失敗:", error);
+      container.innerHTML = '<div style="text-align: center; color: #e53e3e; padding: 20px;">載入失敗，請稍後再試</div>';
+    }
+  }
+
+  // 邀請成員加入群組
+  async function inviteMembers() {
+    const checkboxes = document.querySelectorAll('#friendSelectList input[type="checkbox"]:checked');
+    const msgEl = document.getElementById("inviteMembersMsg");
+    
+    if (checkboxes.length === 0) {
+      msgEl.textContent = "請選擇要邀請的好友";
+      return;
+    }
+    
+    msgEl.textContent = "";
+    
+    try {
+      const selectedFriends = Array.from(checkboxes).map(cb => cb.value);
+      
+      // 更新群組成員列表
+      await db.collection("groups").doc(currentGroupId).update({
+        members: firebase.firestore.FieldValue.arrayUnion(...selectedFriends),
+        updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+      });
+      
+      // 發送系統訊息
+      const inviteMessage = {
+        sender: "系統",
+        senderUid: "system",
+        type: "system",
+        text: `${displayName} 邀請了 ${selectedFriends.length} 位新成員加入群組`,
+        timestamp: firebase.firestore.FieldValue.serverTimestamp(),
+      readBy: [uid] // 自己先已讀
+      };
+      
+      await db.collection("groupChats").doc(currentGroupId).collection("messages").add(inviteMessage);
+      
+      closeModal("inviteMembersModal");
+      msgEl.classList.add("msg-success");
+      msgEl.textContent = "邀請成功！";
+      
+      setTimeout(() => {
+        msgEl.textContent = "";
+        msgEl.classList.remove("msg-success");
+      }, 2000);
+      // 重新載入群組設定和成員數
+const groupDoc = await db.collection("groups").doc(currentGroupId).get();
+if (groupDoc.exists) {
+  currentGroupData = groupDoc.data();
+  document.getElementById('chatHeaderSubtitle').textContent =
+    `${currentGroupData.members ? currentGroupData.members.length : 0} 位成員`;
+}
+
+    } catch (error) {
+      console.error("邀請成員失敗:", error);
+      msgEl.textContent = "邀請失敗，請稍後再試";
+    }
+  }
+
+  // 載入群組設定
+  async function loadGroupSettings() {
+    // 重新抓群組最新資料
+try {
+  const groupDoc = await db.collection("groups").doc(currentGroupId).get();
+  if (groupDoc.exists) {
+    currentGroupData = groupDoc.data();
+  }
+} catch (err) {
+  console.error("載入群組資料失敗", err);
+}
+
+    if (!currentGroupId || !currentGroupData) return;
+    
+    // 填入群組基本資訊
+    document.getElementById("editGroupName").value = currentGroupData.name;
+    document.getElementById("editGroupDesc").value = currentGroupData.description || "";
+    
+    // 載入成員列表
+    const memberList = document.getElementById("memberList");
+    const memberCount = document.getElementById("memberCount");
+    memberList.innerHTML = '<div style="text-align: center; color: #888; padding: 20px;">載入中...</div>';
+    
+    try {
+      const memberPromises = currentGroupData.members.map(async (memberUid) => {
+        try {
+          const userDoc = await db.collection("users").doc(memberUid).get();
+          return {
+            uid: memberUid,
+            data: userDoc.exists ? userDoc.data() : { displayName: "未知用戶" }
+          };
+        } catch (error) {
+          return {
+            uid: memberUid,
+            data: { displayName: "載入失敗" }
+          };
+        }
+      });
+      
+      const members = await Promise.all(memberPromises);
+      memberList.innerHTML = "";
+      memberCount.textContent = members.length;
+      
+      members.forEach(({ uid: memberUid, data }) => {
+        const item = document.createElement("div");
+        item.classList.add("member-item");
+        
+        const isOwner = memberUid === currentGroupData.owner;
+        const isAdmin = currentGroupData.admins && currentGroupData.admins.includes(memberUid);
+        const canManage = uid === currentGroupData.owner || (currentGroupData.admins && currentGroupData.admins.includes(uid));
+        
+        let roleText = "";
+        if (isOwner) roleText = "群主";
+        else if (isAdmin) roleText = "管理員";
+        
+        item.innerHTML = `
+          <div class="member-info">
+            <span class="member-name">${data.displayName}</span>
+            ${roleText ? `<span class="member-role">${roleText}</span>` : ""}
+          </div>
+        `;
+        
+        // 如果有管理權限且不是對自己操作
+        if (canManage && memberUid !== uid && !isOwner) {
+          const actions = document.createElement("div");
+          actions.classList.add("member-actions");
+          
+          if (!isAdmin) {
+            const promoteBtn = document.createElement("button");
+            promoteBtn.textContent = "設為管理員";
+            promoteBtn.style.background = "#48bb78";
+            promoteBtn.style.color = "white";
+            promoteBtn.onclick = () => promoteMember(memberUid, data.displayName);
+            actions.appendChild(promoteBtn);
+          }
+          
+          const removeBtn = document.createElement("button");
+          removeBtn.textContent = "移除";
+          removeBtn.style.background = "#e53e3e";
+          removeBtn.style.color = "white";
+          removeBtn.onclick = () => removeMember(memberUid, data.displayName);
+          actions.appendChild(removeBtn);
+          
+          item.appendChild(actions);
+        }
+        
+        memberList.appendChild(item);
+      });
+      
+    } catch (error) {
+      console.error("載入成員列表失敗:", error);
+      memberList.innerHTML = '<div style="text-align: center; color: #e53e3e; padding: 20px;">載入失敗，請稍後再試</div>';
+    }
+  }
+
+  // 儲存群組設定
+  async function saveGroupSettings() {
+    const name = document.getElementById("editGroupName").value.trim();
+    const description = document.getElementById("editGroupDesc").value.trim();
+    const msgEl = document.getElementById("groupSettingsMsg");
+    
+    if (!name) {
+      msgEl.textContent = "群組名稱不能為空";
+      return;
+    }
+    
+    try {
+      await db.collection("groups").doc(currentGroupId).update({
+        name: name,
+        description: description,
+        updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+      });
+      
+      // 更新當前群組資料
+      currentGroupData.name = name;
+      currentGroupData.description = description;
+      
+      // 更新UI
+      document.querySelector('.chat-header-title').textContent = name;
+      
+      closeModal("groupSettingsModal");
+      
+    } catch (error) {
+      console.error("儲存群組設定失敗:", error);
+      msgEl.textContent = "儲存失敗，請稍後再試";
+    }
+  }
+
+  // 提升成員為管理員
+  async function promoteMember(memberUid, memberName) {
+    if (!confirm(`確定要將 ${memberName} 設為管理員嗎？`)) return;
+    
+    try {
+      await db.collection("groups").doc(currentGroupId).update({
+        admins: firebase.firestore.FieldValue.arrayUnion(memberUid),
+        updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+      });
+      
+      // 重新載入設定
+      const groupDoc = await db.collection("groups").doc(currentGroupId).get();
+      if (groupDoc.exists) {
+        currentGroupData = groupDoc.data();
+        loadGroupSettings();
+      }
+      
+    } catch (error) {
+      console.error("提升管理員失敗:", error);
+      alert("操作失敗，請稍後再試");
+    }
+  }
+
+  // 移除群組成員
+  async function removeMember(memberUid, memberName) {
+    if (!confirm(`確定要將 ${memberName} 移出群組嗎？`)) return;
+    
+    try {
+      await db.collection("groups").doc(currentGroupId).update({
+        members: firebase.firestore.FieldValue.arrayRemove(memberUid),
+        admins: firebase.firestore.FieldValue.arrayRemove(memberUid),
+        updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+      });
+      
+      // 發送系統訊息
+      const removeMessage = {
+        sender: "系統",
+        senderUid: "system",
+        type: "system",
+        text: `${memberName} 已被移出群組`,
+        timestamp: firebase.firestore.FieldValue.serverTimestamp(),
+      readBy: [uid] // 自己先已讀
+      };
+      
+      await db.collection("groupChats").doc(currentGroupId).collection("messages").add(removeMessage);
+      
+      // 重新載入設定
+      const groupDoc = await db.collection("groups").doc(currentGroupId).get();
+      if (groupDoc.exists) {
+        currentGroupData = groupDoc.data();
+        loadGroupSettings();
+        // 更新聊天頭部成員數
+        document.getElementById('chatHeaderSubtitle').textContent = `${currentGroupData.members.length} 位成員`;
+      }
+      
+    } catch (error) {
+      console.error("移除成員失敗:", error);
+      alert("操作失敗，請稍後再試");
+    }
+  }
+
+  // 離開群組
+  async function leaveGroup() {
+    const isOwner = uid === currentGroupData.owner;
+    const confirmText = isOwner ? 
+      "您是群主，離開後群組將被解散。確定要離開嗎？" : 
+      "確定要離開這個群組嗎？";
+    
+    if (!confirm(confirmText)) return;
+    
+    try {
+      if (isOwner) {
+        // 群主離開 = 解散群組
+        await db.collection("groups").doc(currentGroupId).delete();
+        
+        // 刪除群組聊天記錄
+        const messagesRef = db.collection("groupChats").doc(currentGroupId).collection("messages");
+        const batch = db.batch();
+        const messagesSnapshot = await messagesRef.get();
+        messagesSnapshot.forEach(doc => batch.delete(doc.ref));
+        await batch.commit();
+        
+        // 刪除群組聊天文檔
+        await db.collection("groupChats").doc(currentGroupId).delete();
+        
+      } else {
+        // 一般成員離開
+        await db.collection("groups").doc(currentGroupId).update({
+          members: firebase.firestore.FieldValue.arrayRemove(uid),
+          admins: firebase.firestore.FieldValue.arrayRemove(uid),
+          updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+        });
+        
+        // 發送系統訊息
+        const leaveMessage = {
+          sender: "系統",
+          senderUid: "system",
+          type: "system",
+          text: `${displayName} 已離開群組`,
+          timestamp: firebase.firestore.FieldValue.serverTimestamp(),
+      readBy: [uid] // 自己先已讀
+        };
+        
+        await db.collection("groupChats").doc(currentGroupId).collection("messages").add(leaveMessage);
+      }
+      
+      // 關閉設定 modal
+      closeModal("groupSettingsModal");
+      
+      // 清空聊天區
+      currentGroupId = null;
+      currentGroupData = null;
+      document.querySelector('.chat-header-title').textContent = "請選擇群組";
+      document.getElementById('chatHeaderSubtitle').textContent = "";
+      document.getElementById('chatHeaderActions').style.display = 'none';
+      document.getElementById("messages").innerHTML = `
+        <div class="empty-state">
+          <h3>💬 開始群組聊天</h3>
+          <p>選擇一個群組開始聊天，或建立新群組邀請朋友加入！</p>
+        </div>
+      `;
+      
+      // 停用輸入區域
+      document.getElementById("messageInput").disabled = true;
+      document.getElementById("sendBtn").disabled = true;
+      document.getElementById("fileBtn").disabled = true;
+      
+      if (unsubscribeMessages) {
+        unsubscribeMessages();
+        unsubscribeMessages = null;
+      }
+      
+    } catch (error) {
+      console.error("離開群組失敗:", error);
+      alert("操作失敗，請稍後再試");
+    }
+  }
+
+  // 顯示群組選項選單
+  function showGroupOptions(event, groupId) {
+    event.stopPropagation();
+    
+    if (actionMenuEl) actionMenuEl.remove();
+    
+    actionMenuEl = document.createElement("div");
+    actionMenuEl.classList.add("action-menu");
+    actionMenuEl.style.top = Math.min(event.clientY, window.innerHeight - 100) + "px";
+    actionMenuEl.style.left = Math.min(event.clientX, window.innerWidth - 120) + "px";
+    
+    const settingsOption = document.createElement("div");
+    settingsOption.textContent = "群組設定";
+    settingsOption.onclick = async () => {
+      // 確保當前群組資料是最新的
+      try {
+        const groupDoc = await db.collection("groups").doc(groupId).get();
+        if (groupDoc.exists) {
+          currentGroupId = groupId;
+          currentGroupData = groupDoc.data();
+          loadGroupSettings();
+          openModal("groupSettingsModal");
+        }
+      } catch (error) {
+        console.error("載入群組資料失敗:", error);
+        alert("載入失敗，請稍後再試");
+      }
+      actionMenuEl.remove();
+    };
+    
+    actionMenuEl.appendChild(settingsOption);
+    document.body.appendChild(actionMenuEl);
+  }
+
+  // 渲染好友列表
+  function renderFriendList(friends, containerId) {
+    const friendsList = document.getElementById(containerId);
+    friendsList.innerHTML = "";
+    
+    if (!friends || friends.length === 0) {
+      renderEmptyFriendList(containerId);
+      return;
+    }
+    
+    friends.forEach(friendUid => {
+      db.collection("users").doc(friendUid).get().then(friendDoc => {
+        if (friendDoc.exists) {
+          const f = document.createElement("div");
+          f.classList.add("friend");
+          f.textContent = friendDoc.data().displayName;
+          f.onclick = () => openChat(friendUid, f);
+          friendsList.appendChild(f);
+        }
+      }).catch(() => {
+        renderTestFriends(containerId);
+      });
+    });
+  }
+
+  function renderEmptyFriendList(containerId) {
+    const container = document.getElementById(containerId);
+    container.innerHTML = '<div style="padding: 15px; text-align: center; color: #888;">還沒有好友，點擊下方按鈕加好友吧！</div>';
+  }
+
+  function renderTestFriends(containerId) {
+    const friendsList = document.getElementById(containerId);
+    friendsList.innerHTML = `
+      <div class="friend" onclick="openTestChat('Alice', this)">Alice (測試用戶)</div>
+      <div class="friend" onclick="openTestChat('Bob', this)">Bob (測試用戶)</div>
+      <div class="friend" onclick="openTestChat('Charlie', this)">Charlie (測試用戶)</div>
+    `;
+  }
+
+  // 開啟測試聊天（用於演示）
+  function openTestChat(friendName, element) {
+    document.querySelectorAll(".friend").forEach(f => f.classList.remove("active-friend"));
+    element.classList.add("active-friend");
+    
+    currentFriendUid = friendName;
+    currentGroupId = null;
+    
+    document.querySelector('.chat-header-title').textContent = `與 ${friendName} 的聊天 (測試模式)`;
+    document.getElementById('chatHeaderSubtitle').textContent = "";
+    document.getElementById('chatHeaderActions').style.display = 'none';
+    
+    document.getElementById("messageInput").disabled = false;
+    document.getElementById("sendBtn").disabled = false;
+    document.getElementById("fileBtn").disabled = false;
+    
+    const messagesDiv = document.getElementById("messages");
+    messagesDiv.innerHTML = `
+      <div class="message-wrapper">
+        <div class="message other">
+          <div><strong>${friendName}:</strong> 嗨！這是測試消息。</div>
+        </div>
+      </div>
+      <div class="message-wrapper">
+        <div class="message self">
+          <div><strong>${displayName}:</strong> 你好！很高興認識你。</div>
+        </div>
+      </div>
+    `;
+  }
+
+  // 一般好友聊天功能（私聊）
+  function getChatId(uid1, uid2) {
+    return [uid1, uid2].sort().join("_");
+  }
+
+  function openChat(friendUid, element) {
+    document.querySelectorAll(".friend").forEach(f => f.classList.remove("active-friend"));
+    element.classList.add("active-friend");
+    
+    currentFriendUid = friendUid;
+    currentGroupId = null;
+    
+    db.collection("users").doc(friendUid).get().then(friendDoc => {
+      document.querySelector('.chat-header-title').textContent = `與 ${friendDoc.data().displayName} 的聊天`;
+      document.getElementById('chatHeaderSubtitle').textContent = "";
+      document.getElementById('chatHeaderActions').style.display = 'none';
+      
+      document.getElementById("messageInput").disabled = false;
+      document.getElementById("sendBtn").disabled = false;
+      document.getElementById("fileBtn").disabled = false;
+    });
+
+    if (unsubscribeMessages) unsubscribeMessages();
+    const chatId = getChatId(uid, friendUid);
+    unsubscribeMessages = db.collection("chats").doc(chatId)
+      .collection("messages")
+      .orderBy("timestamp")
+      .onSnapshot(snapshot => {
+        renderPrivateMessages(snapshot);
+      });
+  }
+
+  function renderPrivateMessages(snapshot) {
+    const messagesDiv = document.getElementById("messages");
+    messagesDiv.innerHTML = "";
+    
+    if (snapshot.empty) {
+      messagesDiv.innerHTML = `
+        <div class="empty-state">
+          <h3>👋 開始聊天吧！</h3>
+          <p>這是你們的第一次對話，說點什麼吧！</p>
+        </div>
+      `;
+      return;
+    }
+    
+    snapshot.forEach(doc => {
+      const data = doc.data();
+      const wrapper = document.createElement("div");
+      wrapper.classList.add("message-wrapper");
+      wrapper.id = `msg-${doc.id}`;
+      
+      const msgEl = document.createElement("div");
+      msgEl.classList.add("message", data.sender === displayName ? "self" : "other");
+
+      // 回覆引用
+      if (data.replyTo) {
+        const replyRef = document.createElement("div");
+        replyRef.classList.add("reply-reference");
+        replyRef.textContent = "回覆內容：載入中...";
+        replyRef.onclick = () => scrollToMessage(data.replyTo);
+        
+        db.collection("chats").doc(getChatId(uid, currentFriendUid)).collection("messages").doc(data.replyTo)
+          .get().then(rDoc => {
+            if (rDoc.exists) {
+              const replyData = rDoc.data();
+              const previewText = getMessagePreview(replyData);
+              replyRef.textContent = `回覆 ${replyData.sender}: ${previewText}`;
+            }
+          });
+        msgEl.appendChild(replyRef);
+      }
+
+      // 訊息內容
+      const contentDiv = document.createElement("div");
+      if (data.type === "image") {
+        const img = document.createElement("img");
+        img.src = data.url;
+        img.classList.add("chat-image");
+        contentDiv.appendChild(img);
+      } else if (data.type === "file") {
+        const fileDiv = document.createElement("div");
+        fileDiv.innerHTML = `📎 `;
+        const a = document.createElement("a");
+        a.href = data.url;
+        a.textContent = data.fileName || "下載檔案";
+        a.target = "_blank";
+        a.style.color = "blue";
+        a.style.textDecoration = "underline";
+        fileDiv.appendChild(a);
+        contentDiv.appendChild(fileDiv);
+      } else {
+        const linkRegex = /(https:\/\/[^\s]+)/g;
+        const safeText = data.text.replace(linkRegex, url => {
+          return `<a href="${url}" target="_blank" style="color:blue;text-decoration:underline;">${url}</a>`;
+        });
+        contentDiv.innerHTML = `<strong>${data.sender}:</strong> ${safeText}`;
+      }
+      msgEl.appendChild(contentDiv);
+
+// 自動標記已讀
+if (!data.readBy?.includes(uid) && data.senderUid !== uid) {
+  // 延遲標記已讀，避免立即標記
+  setTimeout(() => {
+    try {
+      if (currentGroupId) {
+        db.collection("groupChats").doc(currentGroupId)
+          .collection("messages").doc(doc.id)
+          .update({
+            readBy: firebase.firestore.FieldValue.arrayUnion(uid)
+          });
+      } else if (currentFriendUid) {
+        const chatId = getChatId(uid, currentFriendUid);
+        db.collection("chats").doc(chatId)
+          .collection("messages").doc(doc.id)
+          .update({
+            readBy: firebase.firestore.FieldValue.arrayUnion(uid)
+          });
+      }
+    } catch (error) {
+      console.log("標記已讀失敗:", error);
+    }
+  }, 800);
+}
+
+// 顯示發送時間與已讀人數（兩行格式）
+const metaDiv = document.createElement("div");
+metaDiv.style.fontSize = "10px";
+metaDiv.style.color = "#888";
+metaDiv.style.marginTop = "2px";
+metaDiv.style.whiteSpace = "pre-line"; // 支援換行
+metaDiv.classList.add('meta-info');
+// 發送時間格式化
+let timeStr = "時間未知";
+if (data.timestamp?.toDate) {
+  const dateObj = data.timestamp.toDate();
+  const now = new Date();
+  const isToday = dateObj.toDateString() === now.toDateString();
+  
+  let hours = dateObj.getHours();
+  const minutes = String(dateObj.getMinutes()).padStart(2, "0");
+  const period = hours >= 12 ? "下午" : "上午";
+  if (hours > 12) hours -= 12;
+  if (hours === 0) hours = 12;
+  
+  if (isToday) {
+    timeStr = `${period}${hours}:${minutes}`;
+  } else {
+    const month = String(dateObj.getMonth() + 1).padStart(2, "0");
+    const day = String(dateObj.getDate()).padStart(2, "0");
+    timeStr = `${month}/${day} ${period}${hours}:${minutes}`;
+  }
+}
+
+// 已讀人數
+const readCount = (data.readBy?.length || 0);
+let statusText = "";
+
+if (data.senderUid === uid) {
+  // 自己發送的訊息
+  if (readCount <= 1) {
+    statusText = "✓ 已發送";
+  } else {
+    statusText = `✓✓ ${readCount} 人已讀`;
+  }
+} else {
+  // 別人發送的訊息
+  statusText = `${readCount} 人已讀`;
+}
+
+metaDiv.textContent = `${timeStr} • ${statusText}`;
+msgEl.appendChild(metaDiv);
+
+
+      // 三點選單按鈕
+      const moreBtn = document.createElement("button");
+      moreBtn.textContent = "⋯";
+      moreBtn.classList.add("more-btn");
+      moreBtn.onclick = (e) => showPrivateActionMenu(e, doc.id, data);
+      
+      wrapper.appendChild(msgEl);
+      wrapper.appendChild(moreBtn);
+      messagesDiv.appendChild(wrapper);
+    });
+    
+    messagesDiv.scrollTop = messagesDiv.scrollHeight;
+  }
+
+  function showPrivateActionMenu(e, messageId, messageData) {
+    e.stopPropagation();
+    if (actionMenuEl) actionMenuEl.remove();
+
+    actionMenuEl = document.createElement("div");
+    actionMenuEl.classList.add("action-menu");
+    actionMenuEl.style.top = Math.min(e.clientY, window.innerHeight - 150) + "px";
+    actionMenuEl.style.left = Math.min(e.clientX, window.innerWidth - 120) + "px";
+
+    // 回覆功能
+    const reply = document.createElement("div");
+    reply.textContent = "回覆訊息";
+    reply.onclick = () => {
+      replyToMessageId = messageId;
+      document.getElementById("replyUser").textContent = messageData.sender;
+      document.getElementById("replyText").textContent = getMessagePreview(messageData);
+      document.getElementById("replyBox").style.display = "block";
+      actionMenuEl.remove();
+    };
+    actionMenuEl.appendChild(reply);
+
+    // 如果是自己的訊息，顯示收回選項
+    if (messageData.sender === displayName) {
+      const recall = document.createElement("div");
+      recall.textContent = "收回訊息";
+      recall.style.color = "#e53e3e";
+      recall.onclick = () => {
+        messageToDelete = messageId;
+        document.getElementById("confirmTitle").textContent = "確認收回訊息";
+        document.getElementById("confirmMessage").textContent = "確定要收回這則訊息嗎？此操作無法復原。";
+        document.getElementById("confirmModal").style.display = "flex";
+        actionMenuEl.remove();
+      };
+      actionMenuEl.appendChild(recall);
+    }
+
+    document.body.appendChild(actionMenuEl);
+  }
+
+  // Modal 控制函數
+  function openModal(modalId) {
+    document.getElementById(modalId).style.display = "flex";
+  }
+
+  function closeModal(modalId) {
+    document.getElementById(modalId).style.display = "none";
+  }
+
+  // 事件監聽器設置
+  function setupEventListeners() {
+    // 發送訊息
+    document.getElementById("sendBtn").onclick = sendMessage;
+    document.getElementById("messageInput").addEventListener("keypress", e => {
+      if (e.key === "Enter" && !e.shiftKey) {
+        e.preventDefault();
+        sendMessage();
+      }
+    });
+
+    // 檔案上傳
+    document.getElementById("fileBtn").onclick = () => {
+      document.getElementById("fileInput").click();
+    };
+    document.getElementById("fileInput").addEventListener("change", e => {
+      const file = e.target.files[0];
+      if (!file) return;
+      const type = file.type.startsWith("image/") ? "image" : "file";
+      uploadFile(file, type);
+      e.target.value = "";
+    });
+
+    // 群組相關按鈕
+    document.getElementById("createGroupBtn").onclick = () => openModal("createGroupModal");
+    document.getElementById("confirmCreateGroup").onclick = createGroup;
+    document.getElementById("cancelCreateGroup").onclick = () => closeModal("createGroupModal");
+
+    document.getElementById("inviteMembersBtn").onclick = () => {
+      loadFriendSelectList();
+      openModal("inviteMembersModal");
+    };
+    document.getElementById("confirmInviteMembers").onclick = inviteMembers;
+    document.getElementById("cancelInviteMembers").onclick = () => closeModal("inviteMembersModal");
+
+    document.getElementById("groupSettingsBtn").onclick = () => {
+      loadGroupSettings();
+      openModal("groupSettingsModal");
+    };
+    document.getElementById("saveGroupSettings").onclick = saveGroupSettings;
+    document.getElementById("cancelGroupSettings").onclick = () => closeModal("groupSettingsModal");
+    document.getElementById("leaveGroup").onclick = leaveGroup;
+
+    // 加好友
+    document.getElementById("addFriendBtn").onclick = 
+    document.getElementById("addFriendBtnMessages").onclick = () => openModal("addFriendModal");
+    document.getElementById("confirmAddFriend").onclick = addFriend;
+    document.getElementById("cancelAddFriend").onclick = () => closeModal("addFriendModal");
+
+    // 回覆取消
+    document.getElementById("replyCancel").onclick = () => {
+      replyToMessageId = null;
+      document.getElementById("replyBox").style.display = "none";
+    };
+
+    // 確認對話框
+    document.getElementById("confirmYes").onclick = () => {
+      if (messageToDelete) {
+        deleteMessage(messageToDelete);
+        messageToDelete = null;
+      }
+      closeModal("confirmModal");
+    };
+    document.getElementById("confirmNo").onclick = () => {
+      messageToDelete = null;
+      closeModal("confirmModal");
+    };
+
+    // 頭像選單
+    document.getElementById("avatar-btn").onclick = (e) => {
+      e.stopPropagation();
+      const avatarMenu = document.getElementById('avatar-menu');
+      avatarMenu.style.display = avatarMenu.style.display === 'block' ? 'none' : 'block';
+    };
+
+    document.getElementById("logout-btn").onclick = () => {
+      if (confirm("確定要登出嗎？")) {
+        localStorage.removeItem("userEmail");
+        localStorage.removeItem("uid");
+        window.location.href = "login.html";
+      }
+    };
+
+    // 點擊空白處關閉選單和模態框
+    document.addEventListener("click", (e) => {
+      if (actionMenuEl && !actionMenuEl.contains(e.target)) {
+        actionMenuEl.remove();
+      }
+      
+      // 關閉所有 modal（點擊背景時）
+      const modals = [
+        "createGroupModal", "inviteMembersModal", "groupSettingsModal",
+        "addFriendModal", "confirmModal"
+      ];
+      
+      modals.forEach(modalId => {
+        const modal = document.getElementById(modalId);
+        if (e.target === modal) {
+          closeModal(modalId);
+        }
+      });
+      
+      // 關閉頭像選單
+      const avatarMenu = document.getElementById('avatar-menu');
+      const avatarBtn = document.getElementById('avatar-btn');
+      if (!avatarBtn.contains(e.target) && !avatarMenu.contains(e.target)) {
+        avatarMenu.style.display = 'none';
+      }
+    });
+  }
+
+  // 加好友功能
+  async function addFriend() {
+    const friendId = document.getElementById("friendIdInput").value.trim();
+    const msgEl = document.getElementById("addFriendMsg");
+    
+    if (!friendId) {
+      msgEl.textContent = "請輸入好友ID";
+      return;
+    }
+    
+    try {
+      const friendQuery = await db.collection("users").where("friendId", "==", friendId).get();
+      
+      if (friendQuery.empty) {
+        msgEl.textContent = "找不到此用戶";
+        return;
+      }
+      
+      const friendDoc = friendQuery.docs[0];
+      const friendUid = friendDoc.id;
+      
+      if (friendUid === uid) {
+        msgEl.textContent = "不能加自己為好友";
+        return;
+      }
+      
+      if (userFriends.includes(friendUid)) {
+        msgEl.textContent = "已經是好友了";
+        return;
+      }
+      
+      // 雙向加好友
+      await db.collection("users").doc(uid).update({
+        friends: firebase.firestore.FieldValue.arrayUnion(friendUid)
+      });
+      
+      await db.collection("users").doc(friendUid).update({
+        friends: firebase.firestore.FieldValue.arrayUnion(uid)
+      });
+      
+      closeModal("addFriendModal");
+      document.getElementById("friendIdInput").value = "";
+      msgEl.textContent = "";
+      
+    } catch (error) {
+      console.error("加好友失敗:", error);
+      msgEl.textContent = "加好友失敗，請稍後再試";
+    }
+  }
+
+  // 刪除訊息功能
+  async function deleteMessage(messageId) {
+    try {
+      if (currentGroupId) {
+        await db.collection("groupChats").doc(currentGroupId).collection("messages").doc(messageId).delete();
+      } else if (currentFriendUid) {
+        const chatId = getChatId(uid, currentFriendUid);
+        await db.collection("chats").doc(chatId).collection("messages").doc(messageId).delete();
+      }
+    } catch (error) {
+      console.error("刪除訊息失敗:", error);
+      alert("刪除失敗，請稍後再試");
+    }
+  }
+
+  // 初始化應用
+  async function initApp() {
+    try {
+      // 確保用戶資料完整
+      await ensureFriendId();
+      
+      // 設置事件監聽器
+      setupEventListeners();
+      
+      // 開始監聽資料
+      listenFriendList();
+      listenGroupList();
+      
+      console.log("應用初始化完成");
+    } catch (error) {
+      console.error("初始化失敗:", error);
+      alert("初始化失敗，請重新整理頁面");
+    }
+  }
+
+  // 修正 Firebase Storage bucket
+  firebase.app().options.storageBucket = "faycrchat.appspot.com";
+
+  // 啟動應用
+  initApp();
+</script>
+
+
+<!-- START: Automatic fixes appended by assistant: improved sendMessage and openGroupChat with try/catch and safe wiring -->
+<script>
+// Override / improve sendMessage to handle group and private chat with proper awaits and error handling.
+async function sendMessage() {
+  const messageInput = document.getElementById("messageInput");
+  if (!messageInput) return;
+  const text = messageInput.value.trim();
+  if (!text) return;
+
+  if (!currentGroupId && !currentFriendUid) {
+    // no target selected
+    alert("請先選擇群組或好友再傳訊息");
+    return;
+  }
+
+  const msgData = {
+    sender: displayName || "未知",
+    senderUid: uid || "unknown_uid",
+    type: "text",
+    text: text,
+    timestamp: firebase.firestore.FieldValue.serverTimestamp(),
+      readBy: [uid] // 自己先已讀
+  };
+  if (replyToMessageId) {
+    msgData.replyTo = replyToMessageId;
+  }
+
+  try {
+    // disable input while sending to prevent double-send
+    messageInput.disabled = true;
+    document.getElementById("sendBtn").disabled = true;
+
+    if (currentGroupId) {
+      await db.collection("groupChats").doc(currentGroupId).collection("messages").add(msgData);
+
+      // update group's lastMessage and updatedAt
+      await db.collection("groups").doc(currentGroupId).update({
+        updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
+        lastMessage: {
+          sender: msgData.sender,
+          text: msgData.text,
+          timestamp: firebase.firestore.FieldValue.serverTimestamp(),
+      readBy: [uid] // 自己先已讀
+        }
+      });
+    } else {
+      // private chat
+      const chatId = getChatId(uid, currentFriendUid);
+      await db.collection("chats").doc(chatId).collection("messages").add(msgData);
+      // optionally update a chat index / meta doc if the app uses one
+      try {
+        await db.collection("chats").doc(chatId).set({
+          lastMessage: {
+            sender: msgData.sender,
+            text: msgData.text,
+            timestamp: firebase.firestore.FieldValue.serverTimestamp(),
+      readBy: [uid] // 自己先已讀
+          },
+          participants: [uid, currentFriendUid]
+        }, { merge: true });
+      } catch (e) {
+        // non-critical
+        console.warn("更新私聊索引失敗", e);
+      }
+    }
+
+    // success - clear input and reply state
+    messageInput.value = "";
+    replyToMessageId = null;
+    const replyBox = document.getElementById("replyBox");
+    if (replyBox) replyBox.style.display = "none";
+  } catch (err) {
+    console.error("發送訊息失敗:", err);
+    // show inline error next to input if available, otherwise alert
+    let errEl = document.getElementById("sendErrorInline");
+    if (!errEl) {
+      errEl = document.createElement("div");
+      errEl.id = "sendErrorInline";
+      errEl.style.color = "red";
+      errEl.style.fontSize = "13px";
+      errEl.style.marginTop = "6px";
+      document.getElementById("input-area").appendChild(errEl);
+    }
+    errEl.textContent = "發送失敗：" + (err.message || err);
+  } finally {
+    // re-enable input even on error so user can retry
+    if (messageInput) messageInput.disabled = false;
+    const sendBtn = document.getElementById("sendBtn");
+    if (sendBtn) sendBtn.disabled = false;
+    // keep focus on input
+    messageInput.focus();
+  }
+}
+
+// Improved openGroupChat with try/catch and ensures currentGroupData is fresh.
+window.openGroupChat = async function(groupId, groupData) {
+  try {
+    if (!groupId) throw new Error("groupId is required");
+    // try to get latest group doc
+    const groupDoc = await db.collection("groups").doc(groupId).get();
+    if (!groupDoc || !groupDoc.exists) {
+      // show friendly UI
+      document.getElementById("messages").innerHTML = `
+        <div class="empty-state">
+          <h3>❌ 群組不存在</h3>
+          <p>該群組可能已刪除或您已被移除。</p>
+        </div>`;
+      // clear chat header and disable input
+      currentGroupId = null;
+      currentGroupData = null;
+      document.querySelector('.chat-header-title').textContent = "請選擇群組";
+      document.getElementById('chatHeaderSubtitle').textContent = "";
+      document.getElementById('chatHeaderActions').style.display = 'none';
+      document.getElementById("messageInput").disabled = true;
+      document.getElementById("sendBtn").disabled = true;
+      document.getElementById("fileBtn").disabled = true;
+      return;
+    }
+
+    currentGroupId = groupId;
+    // prefer server data over passed-in data so settings are current
+    currentGroupData = groupDoc.data();
+
+    currentFriendUid = null;
+
+    // Update UI selection
+    document.querySelectorAll('.group-item').forEach(item => item.classList.remove('active'));
+    const selector = `[data-group-id="${groupId}"]`;
+    const itemEl = document.querySelector(selector);
+    if (itemEl) itemEl.classList.add('active');
+
+    // Update header
+    document.querySelector('.chat-header-title').textContent = currentGroupData.name || "群組";
+    document.getElementById('chatHeaderSubtitle').textContent = `${currentGroupData.members ? currentGroupData.members.length : 0} 位成員`;
+    document.getElementById('chatHeaderActions').style.display = 'flex';
+
+    // enable input
+    document.getElementById("messageInput").disabled = false;
+    document.getElementById("sendBtn").disabled = false;
+    document.getElementById("fileBtn").disabled = false;
+
+    // attach group settings load for quick access
+    // listen messages (unsubscribe previous)
+    if (typeof unsubscribeMessages === 'function') {
+      try { unsubscribeMessages(); } catch(e){}
+      unsubscribeMessages = null;
+    }
+
+    unsubscribeMessages = db.collection("groupChats").doc(groupId)
+      .collection("messages")
+      .orderBy("timestamp")
+      .onSnapshot(snapshot => {
+        // use existing renderMessages function
+        try { renderMessages(snapshot); } catch (e) {
+          console.error("renderMessages error:", e);
+        }
+      }, (error) => {
+        console.error("監聽訊息失敗:", error);
+        document.getElementById("messages").innerHTML = `
+          <div class="empty-state">
+            <h3>❌ 載入訊息失敗</h3>
+            <p>${error && error.message ? error.message : "監聽遭遇錯誤"}</p>
+          </div>
+        `;
+      });
+  } catch (error) {
+    console.error("開啟群組失敗:", error);
+    alert("開啟群組失敗：" + (error.message || error));
+  }
+};
+
+// Wire up send button and Enter key (if not already)
+(function wireSendControls(){
+  const sendBtn = document.getElementById("sendBtn");
+  if (sendBtn) sendBtn.removeEventListener('click', sendMessage).addEventListener('click', sendMessage);
+
+  const input = document.getElementById("messageInput");
+  if (input) {
+    input.removeEventListener('keydown', window._assistantEnterHandler);
+    window._assistantEnterHandler = function(e){
+      if (e.key === 'Enter' && !e.shiftKey) {
+        e.preventDefault();
+        sendMessage();
+      }
+    };
+    input.addEventListener('keydown', window._assistantEnterHandler);
+  }
+})();
+
+// Safe file input hookup: when file selected, upload as image or file based on mime
+(function wireFileInput(){
+  const fileInput = document.getElementById("fileInput");
+  const fileBtn = document.getElementById("fileBtn");
+  if (fileBtn && fileInput) {
+    fileBtn.addEventListener('click', () => fileInput.click());
+    fileInput.addEventListener('change', async (e) => {
+      const files = e.target.files;
+      if (!files || files.length === 0) return;
+      const f = files[0];
+      // basic mime check
+      const isImage = f.type && f.type.startsWith('image/');
+      try {
+        // disable while uploading
+        fileBtn.disabled = true;
+        await uploadFile(f, isImage ? 'image' : 'file');
+      } catch (err) {
+        console.error("uploadFile error:", err);
+        alert("上傳失敗：" + (err.message || err));
+      } finally {
+        fileBtn.disabled = false;
+        fileInput.value = "";
+      }
+    });
+  }
+})();
+if (!location.hash) {
+  location.hash = "#home";
+}
+// 在 openGroupChat 函数中，更新头部时添加返回按钮
+if (window.innerWidth <= 768) {
+  const backBtn = document.createElement('button');
+  backBtn.textContent = '← 返回';
+  backBtn.className = 'header-btn';
+  backBtn.style.order = '-1';
+  backBtn.onclick = () => {
+    document.getElementById('middle-sidebar').classList.add('mobile-show');
+    document.getElementById('chat-container').classList.add('mobile-hide');
+  };
+  
+  const headerActions = document.getElementById('chatHeaderActions');
+  headerActions.insertBefore(backBtn, headerActions.firstChild);
+}
+</script>
+<!-- END: Automatic fixes appended by assistant -->
+
+</body>
+</html>

@@ -1,0 +1,945 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8" />
+  <title>FayCRChat</title>
+  <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
+  <!-- Firebase 8.x 版本 CDN -->
+  <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-firestore.js"></script>
+  <style>
+    @font-face {
+      font-family: '王漢宗特黑體繁';
+      src: url('wt014.ttf') format('truetype');
+      font-weight: normal;
+    }
+
+    body {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      font-family: '王漢宗特黑體繁', 'Microsoft JhengHei', sans-serif;
+      margin: 0;
+      padding: 20px;
+      min-height: 100vh;
+    }
+
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 0 20px;
+    }
+
+    nav {
+      display: flex;
+      background-color: white;
+      border-radius: 15px;
+      border: 2px solid #ddd;
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+      margin-bottom: 20px;
+    }
+
+    ul {
+      display: flex;
+      align-items: center;
+      list-style: none;
+      width: 100%;
+      padding: 0;
+      margin: 0;
+    }
+
+    li {
+      display: flex;
+      padding: 0 20px;
+      font-size: 22px;
+      align-items: center;
+      height: 60px;
+    }
+
+    li:first-child {
+      font-size: 30px;
+      font-weight: bold;
+      color: #667eea;
+    }
+
+    li a {
+      text-decoration: none;
+      color: #333;
+      cursor: pointer;
+      padding: 8px 12px;
+      border-radius: 8px;
+      transition: all 0.3s ease;
+    }
+
+    li a:hover {
+      background-color: #f5f5f5;
+      color: #667eea;
+    }
+
+    .menu-right {
+      margin-left: auto;
+      display: flex;
+      padding-right: 20px;
+    }
+
+    .main {
+      background-color: white;
+      border-radius: 15px;
+      border: 2px solid #ddd;
+      box-shadow: 0 8px 16px rgba(0, 0, 0, 0.1);
+      overflow: hidden;
+      min-height: calc(100vh - 120px);
+    }
+
+    .title_name {
+      text-align: center;
+      font-weight: bolder;
+      font-size: 650%;
+      color: white;
+      -webkit-text-stroke: #000 0.6px;
+      margin-top: 0;
+      margin-bottom: 50px;
+    }
+    .title_name_bg{
+        background: radial-gradient(circle farthest-corner at left, rgb(179, 0, 255), rgb(255, 0, 195));
+        border-top-left-radius: 20px;
+        border-top-right-radius: 20px;
+        padding: 60px;
+    }
+
+    @media (prefers-reduced-motion: no-preference) {
+      .title_name {
+        animation: move-bg 8s linear infinite;
+      }
+
+      @keyframes move-bg {
+        to {
+          background-position: var(--bg-size) 0;
+        }
+      }
+    }
+
+    /* 登入彈窗樣式 */
+    #loginModal {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0, 0, 0, 0.7);
+      justify-content: center;
+      align-items: center;
+      z-index: 9999;
+    }
+
+    #loginModal .modal-content {
+      background: #111;
+      padding: 30px;
+      border-radius: 8px;
+      width: 320px;
+      box-sizing: border-box;
+      color: white;
+      text-align: center;
+    }
+
+    #loginModal label {
+      display: block;
+      margin-top: 15px;
+      font-weight: bold;
+      text-align: left;
+    }
+
+    #loginModal input {
+      width: 100%;
+      padding: 8px;
+      margin-top: 5px;
+      border: none;
+      border-radius: 4px;
+      box-sizing: border-box;
+      font-size: 16px;
+    }
+
+    #loginModal button {
+      margin-top: 20px;
+      width: 100%;
+      padding: 10px;
+      background: #0055ff;
+      border: none;
+      border-radius: 4px;
+      color: white;
+      font-size: 16px;
+      cursor: pointer;
+    }
+
+    #loginModal .close-btn {
+      background: #333;
+      margin-top: 10px;
+    }
+
+    /* Avatar / Dropdown */
+    #enhancedAvatar {
+      width: 44px;
+      height: 44px;
+      border-radius: 50%;
+      cursor: pointer;
+      display: none;
+      margin-left: 10px;
+    }
+
+    #enhancedContainer {
+      display: flex;
+      align-items: center;
+      position: relative;
+    }
+
+    #enhancedDropdown {
+      display: none;
+      position: absolute;
+      top: 58px;
+      right: 0;
+      background: white;
+      border-radius: 8px;
+      border: 1px solid #ccc;
+      min-width: 180px;
+      text-align: center;
+      box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+      z-index: 9999;
+    }
+
+    #enhancedDropdown button {
+      display: block;
+      width: 100%;
+      padding: 10px;
+      background: none;
+      border: none;
+      cursor: pointer;
+      font-size: 15px;
+      text-align: center;
+    }
+
+    #enhancedDropdown button:hover {
+      background: #f0f0f0;
+    }
+    .border-line{
+        border: #000 solid 4px;
+    }
+    .main_Login_btn, .main_ChatNow_btn {
+        cursor: pointer;
+        padding: 12px 30px;
+        border-radius: 25px;
+        border: 2px solid #667eea;
+        color: white;
+        font-size: 18px;
+        font-family: '王漢宗特黑體繁', 'Microsoft JhengHei', sans-serif;
+        transition: all 0.3s ease;
+        text-decoration: none;
+        display: inline-block;
+    }
+
+    .main_Login_btn {
+        background-color: #667eea;
+    }
+
+    .main_Login_btn:hover {
+        background-color: #5a67d8;
+        transform: translateY(-2px);
+        box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+    }
+
+    .main_ChatNow_btn {
+        background-color: #48bb78;
+        border-color: #48bb78;
+    }
+
+    .main_ChatNow_btn:hover {
+        background-color: #38a169;
+        border-color: #38a169;
+        transform: translateY(-2px);
+        box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+    }
+
+    .cta-buttons {
+      display: flex;
+      gap: 20px;
+      justify-content: center;
+      margin-top: 40px;
+      flex-wrap: wrap;
+    }
+
+    .cta-btn {
+      padding: 12px 30px;
+      border-radius: 25px;
+      border: 2px solid #333;
+      font-size: 16px;
+      font-family: '王漢宗特黑體繁', 'Microsoft JhengHei', sans-serif;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      text-decoration: none;
+      display: inline-block;
+    }
+
+    .cta-btn.primary {
+      background: #667eea;
+      color: white;
+      border-color: #667eea;
+    }
+
+    .cta-btn.primary:hover {
+      background: #5a67d8;
+      border-color: #5a67d8;
+      transform: translateY(-2px);
+    }
+
+    .cta-btn.secondary {
+      background: white;
+      color: #333;
+    }
+
+    .cta-btn.secondary:hover {
+      background: #f5f5f5;
+      transform: translateY(-2px);
+    }
+
+    /* 首頁展示區塊樣式 */
+    .section {
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      padding: 60px 40px;
+      box-sizing: border-box;
+      position: relative;
+    }
+
+    .section-hero {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      text-align: center;
+    }
+
+    .section-features {
+      background: #f8f9fa;
+      color: #333;
+    }
+
+    .section-demo {
+      background: linear-gradient(135deg, #a8e6cf 0%, #88d8c0 100%);
+      color: #333;
+    }
+
+    .section-community {
+      background: #f8f9fa;
+      color: #333;
+    }
+
+    .section-cta {
+      background: linear-gradient(135deg, #ffeaa7 0%, #fab1a0 100%);
+      color: #333;
+    }
+
+    .section h1 {
+      font-size: 650%;
+      margin-bottom: 20px;
+      font-weight: bold;
+    }
+
+    .section h2 {
+      font-size: 2.5rem;
+      margin-bottom: 30px;
+      text-align: center;
+      font-weight: normal;
+      color: #333;
+    }
+
+    .section-hero h1 {
+      color: white;
+      text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+    }
+
+    .section-hero h2,
+    .section-demo h2,
+    .section-cta h2 {
+      color: white;
+    }
+
+    .section p {
+      font-size: 1.2rem;
+      text-align: center;
+      max-width: 600px;
+      line-height: 1.6;
+      margin-bottom: 40px;
+      color: #666;
+    }
+
+    .section-hero p,
+    .section-demo p,
+    .section-cta p {
+      color: rgba(255,255,255,0.9);
+    }
+
+    .features-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+      gap: 30px;
+      max-width: 1000px;
+      width: 100%;
+    }
+
+    .feature-card {
+      background: white;
+      border-radius: 12px;
+      padding: 30px;
+      text-align: center;
+      border: 1px solid #e0e0e0;
+      box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+      transition: transform 0.3s ease, box-shadow 0.3s ease;
+    }
+
+    .feature-card:hover {
+      transform: translateY(-5px);
+      box-shadow: 0 8px 16px rgba(0,0,0,0.15);
+    }
+
+    .feature-icon {
+      font-size: 2.5rem;
+      margin-bottom: 20px;
+    }
+
+    .feature-card h3 {
+      font-size: 1.3rem;
+      margin-bottom: 15px;
+      color: #333;
+    }
+
+    .feature-card p {
+      font-size: 0.95rem;
+      margin-bottom: 0;
+      color: #666;
+      line-height: 1.5;
+    }
+
+    .demo-container {
+      display: flex;
+      gap: 40px;
+      align-items: center;
+      max-width: 1000px;
+      width: 100%;
+      flex-wrap: wrap;
+    }
+
+    .demo-chat {
+      flex: 1;
+      min-width: 300px;
+      background: white;
+      border-radius: 15px;
+      padding: 25px;
+      border: 1px solid rgba(255,255,255,0.3);
+      box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+    }
+
+    .chat-message {
+      background: #f5f5f5;
+      padding: 12px 15px;
+      margin: 10px 0;
+      border-radius: 12px;
+      font-size: 0.95rem;
+      animation: fadeInUp 0.5s ease;
+    }
+
+    .chat-message.user {
+      margin-left: 40px;
+      background: #667eea;
+      color: white;
+    }
+
+    .chat-message.bot {
+      margin-right: 40px;
+      background: #e8e8e8;
+      color: #333;
+    }
+
+    @keyframes fadeInUp {
+      from {
+        opacity: 0;
+        transform: translateY(20px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    .community-stats {
+      display: flex;
+      justify-content: space-around;
+      max-width: 800px;
+      width: 100%;
+      margin-top: 40px;
+      flex-wrap: wrap;
+    }
+
+    .stat-item {
+      text-align: center;
+      margin: 10px;
+      padding: 20px;
+      background: white;
+      border-radius: 12px;
+      box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+      min-width: 150px;
+    }
+
+    .stat-number {
+      font-size: 2.5rem;
+      font-weight: bold;
+      display: block;
+      color: #667eea;
+    }
+
+    .stat-label {
+      font-size: 1rem;
+      color: #666;
+      margin-top: 5px;
+    }
+
+    .scroll-indicator {
+      position: absolute;
+      bottom: 30px;
+      left: 50%;
+      transform: translateX(-50%);
+      animation: bounce 2s infinite;
+    }
+
+    .scroll-indicator::after {
+      content: '↓';
+      font-size: 2rem;
+      opacity: 0.7;
+    }
+
+    @keyframes bounce {
+      0%, 20%, 50%, 80%, 100% {
+        transform: translateX(-50%) translateY(0);
+      }
+      40% {
+        transform: translateX(-50%) translateY(-10px);
+      }
+      60% {
+        transform: translateX(-50%) translateY(-5px);
+      }
+    }
+
+    .cta-buttons {
+      display: flex;
+      gap: 20px;
+      justify-content: center;
+      margin-top: 40px;
+    }
+
+    .cta-btn {
+      padding: 15px 40px;
+      border-radius: 25px;
+      border: 3px solid #333;
+      font-size: 1.2rem;
+      font-family: '王漢宗特黑體繁';
+      cursor: pointer;
+      transition: all 0.3s ease;
+      text-decoration: none;
+      display: inline-block;
+    }
+
+    .cta-btn.primary {
+      background: #0055ff;
+      color: white;
+    }
+
+    .cta-btn.primary:hover {
+      background: #0044cc;
+      transform: scale(1.05);
+    }
+
+    .cta-btn.secondary {
+      background: white;
+      color: #333;
+    }
+
+    .cta-btn.secondary:hover {
+      background: #f0f0f0;
+      transform: scale(1.05);
+    }
+  </style>
+</head>
+<body>
+  <nav>
+    <ul>
+      <li>FayCRChat</li>
+      <div class="menu-right">
+        <li id="loginNavItem" style="font-size: 22px;font-weight: normal;"><a onclick="openLoginModal()">登入</a></li>
+        <li id="chatNowNavItem" ><a href="#chat-ad">Chat Now</a></li>
+      </div>
+    </ul>
+  </nav>
+
+  <div class="main">
+    <!-- Section 1: Hero -->
+    <div class="section section-hero">
+        <h1 class="title_name">使用FayCRChat<br>連結好友˙訊息不斷</h1>
+        <center>
+          <a onclick="openLoginModal()" id="loginMainBtn">
+            <button class="main_Login_btn">登入</button>
+          </a>
+          <a href="#chat-ad" id="chatNowMainBtn" style="display: none;">
+            <button class="main_ChatNow_btn">Chat Now</button>
+          </a>
+        </center>
+        <div class="scroll-indicator"></div>
+    </div>
+
+    <!-- Section 2: Features -->
+    <div class="section section-features">
+        <h2>強大功能</h2>
+        <p>FayCRChat 提供最先進的聊天體驗，讓溝通變得更加簡單有趣</p>
+        <div class="features-grid">
+            <div class="feature-card">
+                <div class="feature-icon">💬</div>
+                <h3>即時聊天</h3>
+                <p>快速、穩定的即時訊息傳遞，讓你與朋友隨時保持聯繫</p>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon">🌐</div>
+                <h3>跨平台支援</h3>
+                <p>支援所有主流設備和瀏覽器，隨時隨地都能聊天</p>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon">🎨</div>
+                <h3>個性化介面</h3>
+                <p>豐富的主題和自訂選項，打造專屬於你的聊天體驗</p>
+            </div>
+        </div>
+        <div class="scroll-indicator"></div>
+    </div>
+
+    <!-- Section 3: Demo -->
+    <div class="section section-demo">
+        <h2 style="color: #000;">聊天演示</h2>
+        <p style="color: #000;">體驗 FayCRChat 的流暢聊天介面</p>
+        <div class="demo-container">
+            <div class="demo-chat">
+                <div class="chat-message user">
+                    <strong>你:</strong> 嗨！今天天氣真不錯 ☀️
+                </div>
+                <div class="chat-message bot">
+                    <strong>朋友:</strong> 是啊！要不要一起出去走走？
+                </div>
+                <div class="chat-message user">
+                    <strong>你:</strong> 好主意！去哪裡呢？
+                </div>
+                <div class="chat-message bot">
+                    <strong>朋友:</strong> 聽說新開了一間咖啡廳，評價不錯 ☕
+                </div>
+                <div class="chat-message user">
+                    <strong>你:</strong> 那就決定了！幾點見面？
+                </div>
+            </div>
+        </div>
+        <div class="scroll-indicator"></div>
+    </div>
+
+    <!-- Section 4: Community -->
+    <div class="section section-community">
+        <h2>加入我們的社群</h2>
+        <p>成千上萬的用戶已經在使用 FayCRChat，成為我們大家庭的一員吧！</p>
+        <div class="community-stats">
+            <div class="stat-item">
+                <span class="stat-number">50K+</span>
+                <span class="stat-label">活躍用戶</span>
+            </div>
+            <div class="stat-item">
+                <span class="stat-number">1M+</span>
+                <span class="stat-label">訊息傳送</span>
+            </div>
+            <div class="stat-item">
+                <span class="stat-number">99.9%</span>
+                <span class="stat-label">穩定運行</span>
+            </div>
+        </div>
+        <div class="scroll-indicator"></div>
+    </div>
+
+    <!-- Section 5: Call to Action -->
+    <div class="section section-cta" id="chat-ad">
+        <h2 style="color: #000;">準備開始聊天了嗎？</h2>
+        <p style="color: #000;">加入 FayCRChat，體驗前所未有的聊天樂趣。簡單註冊，立即開始與朋友們連接！</p>
+        <div class="cta-buttons">
+            <a onclick="openLoginModal()" class="cta-btn primary" id="loginCTABtn" style="color: white;">立即登入</a>
+            <a onclick="goToChat()" class="cta-btn primary" id="chatNowCTABtn" style="display: none;" style="color: #000;">開始聊天</a>
+            <a href="#" class="cta-btn secondary" style="color: #000;">了解更多</a>
+        </div>
+        <p style="margin-top: 40px; font-size: 1rem; opacity: 0.8;color: #000;">
+            🌟 免費使用 • 🔐 隱私保護 • 💙 用戶至上
+        </p>
+    </div>
+  </div>
+
+  <!-- 登入彈窗 -->
+  <div id="loginModal">
+    <div class="modal-content">
+      <h2>登入 FayCRChat</h2>
+      <label>Email</label>
+      <input type="email" id="user_email" required />
+
+      <label>驗證碼</label>
+      <input type="text" id="verification_code" pattern="[0-9]*" inputmode="numeric" required />
+
+      <button id="sendCodeBtn" onclick="sendVerificationCode()">送出驗證碼</button>
+      <button onclick="verifyCode()">登入</button>
+      <button class="close-btn" onclick="closeLoginModal()">取消</button>
+    </div>
+  </div>
+
+  <script>
+    // EmailJS 初始化
+    emailjs.init("Rna6NHThG_VW9eyRE");
+
+    // Firebase 初始化
+    const firebaseConfig = {
+      apiKey: "AIzaSyBdrLtJihqOdIhvODvtLaUXZozOlXmxPAI",
+      authDomain: "faycrchat.firebaseapp.com",
+      projectId: "faycrchat",
+      storageBucket: "faycrchat.firebasestorage.app",
+      messagingSenderId: "569359638648",
+      appId: "1:569359638648:web:73a05e760fd2af90608d8d",
+      measurementId: "G-LTBL20K38K"
+    };
+
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.firestore();
+
+    let currentVerificationCode = null;
+    let cooldownTimer = null;
+
+    function openLoginModal() {
+      document.getElementById("loginModal").style.display = "flex";
+    }
+
+    function closeLoginModal() {
+      document.getElementById("loginModal").style.display = "none";
+    }
+
+    // 跳轉到聊天頁面
+    function goToChat() {
+      window.open('app.html', '_blank');
+    }
+
+    // 60秒冷卻機制
+    function startCooldown() {
+      const btn = document.getElementById("sendCodeBtn");
+      let countdown = 60;
+      btn.disabled = true;
+      btn.textContent = `重新發送 (${countdown}s)`;
+
+      cooldownTimer = setInterval(() => {
+        countdown--;
+        if (countdown <= 0) {
+          clearInterval(cooldownTimer);
+          btn.disabled = false;
+          btn.textContent = "送出驗證碼";
+        } else {
+          btn.textContent = `重新發送 (${countdown}s)`;
+        }
+      }, 1000);
+    }
+
+    async function sendVerificationCode() {
+      const email = document.getElementById("user_email").value.trim();
+      if (!email) return alert("請輸入 Email");
+
+      if (cooldownTimer) {
+        alert("請等待冷卻時間結束後再試");
+        return;
+      }
+
+      currentVerificationCode = Math.floor(100000 + Math.random() * 900000).toString();
+
+      try {
+        await emailjs.send("FayCRChat", "template_k24d4mb", {
+          to_email: email,
+          code: currentVerificationCode
+        });
+        alert("驗證碼已寄出，請檢查您的信箱");
+        startCooldown();
+      } catch (err) {
+        alert("發送失敗，請稍後再試");
+        console.error(err);
+      }
+    }
+
+    async function verifyCode() {
+      const inputCode = document.getElementById("verification_code").value.trim();
+      if (inputCode === currentVerificationCode) {
+        alert("✅ 驗證成功，登入完成！");
+        const email = document.getElementById("user_email").value.trim();
+
+        localStorage.setItem("isLoggedIn", "true");
+        localStorage.setItem("userEmail", email);
+
+        await showEnhancedFor(email);
+
+        // 更新首頁內容為登入後頁面
+        document.querySelector(".title_name").textContent = `歡迎回來, ${email.split('@')[0]}`;
+
+        closeLoginModal();
+      } else {
+        alert("❌ 驗證碼錯誤，請重新輸入");
+      }
+    }
+
+    // -------------- Avatar 和下拉選單 ----------------
+    function createEnhancedUIOnce() {
+      const menuRight = document.querySelector('.menu-right');
+      if (!menuRight) return;
+      if (document.getElementById('enhancedContainer')) return;
+
+      const container = document.createElement('div');
+      container.id = 'enhancedContainer';
+      container.style.display = 'flex';
+      container.style.alignItems = 'center';
+      container.style.position = 'relative';
+
+      const avatar = document.createElement('img');
+      avatar.id = 'enhancedAvatar';
+      avatar.src = 'https://i.imgur.com/4Z7hFfK.png';
+      avatar.alt = 'avatar';
+      avatar.style.display = 'none';
+      avatar.addEventListener('click', toggleEnhancedDropdown);
+
+      const dropdown = document.createElement('div');
+      dropdown.id = 'enhancedDropdown';
+
+      const nameBtn = document.createElement('button');
+      nameBtn.id = 'enhDisplayName';
+      nameBtn.textContent = '';
+
+      const emailBtn = document.createElement('button');
+      emailBtn.id = 'enhEmail';
+      emailBtn.textContent = '';
+
+      const settingsBtn = document.createElement('button');
+      settingsBtn.textContent = '設定';
+      settingsBtn.addEventListener('click', function(){ alert('設定功能尚未開放'); });
+
+      const logoutBtn = document.createElement('button');
+      logoutBtn.textContent = '登出';
+      logoutBtn.addEventListener('click', enhancedLogout);
+
+      dropdown.appendChild(nameBtn);
+      dropdown.appendChild(emailBtn);
+      dropdown.appendChild(settingsBtn);
+      dropdown.appendChild(logoutBtn);
+
+      container.appendChild(avatar);
+      container.appendChild(dropdown);
+      menuRight.appendChild(container);
+    }
+
+    function toggleEnhancedDropdown() {
+      const d = document.getElementById('enhancedDropdown');
+      if (!d) return;
+      d.style.display = d.style.display === 'block' ? 'none' : 'block';
+    }
+
+    // 切換登入/登出狀態的 UI 顯示
+    function toggleUIBasedOnLoginStatus(isLoggedIn) {
+      const loginNavItem = document.getElementById('loginNavItem');
+      const chatNowNavItem = document.getElementById('chatNowNavItem');
+      const loginMainBtn = document.getElementById('loginMainBtn');
+      const chatNowMainBtn = document.getElementById('chatNowMainBtn');
+      const loginCTABtn = document.getElementById('loginCTABtn');
+      const chatNowCTABtn = document.getElementById('chatNowCTABtn');
+
+      if (isLoggedIn) {
+        // 隱藏登入按鈕，顯示 Chat Now 按鈕
+        loginNavItem.style.display = 'none';
+        chatNowNavItem.style.display = 'flex';
+        loginMainBtn.style.display = 'none';
+        chatNowMainBtn.style.display = 'inline';
+        loginCTABtn.style.display = 'none';
+        chatNowCTABtn.style.display = 'inline-block';
+      } else {
+        // 顯示登入按鈕，隱藏 Chat Now 按鈕
+        loginNavItem.style.display = 'flex';
+        chatNowNavItem.style.display = 'none';
+        loginMainBtn.style.display = 'inline';
+        chatNowMainBtn.style.display = 'none';
+        loginCTABtn.style.display = 'inline-block';
+        chatNowCTABtn.style.display = 'none';
+      }
+    }
+
+    async function showEnhancedFor(email) {
+      createEnhancedUIOnce();
+      const uid = localStorage.getItem('uid') || email.replace(/[^a-zA-Z0-9]/g, '_');
+      const displayName = email.split('@')[0];
+
+      // 寫入 Firestore，合併模式
+      try {
+        await db.collection("FayCRChat").doc(uid).set({
+          email: email,
+          displayName: displayName,
+          lastLogin: firebase.firestore.FieldValue.serverTimestamp()
+        }, { merge: true });
+      } catch (err) {
+        console.warn('Firestore 寫入失敗', err);
+      }
+
+      // 讀取 Firestore 資料（若有）
+      let userData = { displayName, email };
+      try {
+        const docSnap = await db.collection("FayCRChat").doc(uid).get();
+        if (docSnap.exists) userData = Object.assign({}, userData, docSnap.data());
+      } catch (err) {
+        console.warn('Firestore 讀取錯誤', err);
+      }
+
+      // 更新 UI
+      const avatar = document.getElementById('enhancedAvatar');
+      const nameBtn = document.getElementById('enhDisplayName');
+      const emailBtn = document.getElementById('enhEmail');
+
+      if (nameBtn) nameBtn.textContent = userData.displayName || '';
+      if (emailBtn) emailBtn.textContent = userData.email || '';
+      if (avatar) avatar.style.display = 'block';
+
+      // 切換到登入後的 UI 狀態
+      toggleUIBasedOnLoginStatus(true);
+
+      // 更新標題
+      const titleEl = document.querySelector('.title_name');
+      if (titleEl) titleEl.textContent = `歡迎回來, ${userData.displayName || ''}`;
+
+      if (!localStorage.getItem('uid')) {
+        localStorage.setItem('uid', uid);
+      }
+    }
+
+    function enhancedLogout() {
+      localStorage.removeItem('isLoggedIn');
+      localStorage.removeItem('userEmail');
+      localStorage.removeItem('uid');
+      location.reload();
+    }
+
+    // 頁面載入時檢查登入狀態
+    window.addEventListener('load', () => {
+      createEnhancedUIOnce();
+      const isLoggedIn = localStorage.getItem('isLoggedIn');
+      const userEmail = localStorage.getItem('userEmail');
+      
+      if (isLoggedIn && userEmail) {
+        showEnhancedFor(userEmail);
+      } else {
+        toggleUIBasedOnLoginStatus(false);
+      }
+    });
+  </script>
+
+</body>
+</html>
